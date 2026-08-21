@@ -1,0 +1,12 @@
+{
+  "name": "Ledger",
+  "short_name": "Ledger",
+  "description": "Personal cashbook for tracking your monthly allowance",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F3D3E",
+  "theme_color": "#0F3D3E",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
