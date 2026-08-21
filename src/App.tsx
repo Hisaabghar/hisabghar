@@ -40,7 +40,6 @@ function LedgerApp({ userId, onSignOut }: { userId: string; onSignOut: () => voi
   const txnsState = useTransactions(userId, accountsState.activeAccountId)
   const [searchQuery, setSearchQuery] = useState('')
   const [modal, setModal] = useState<Modal>(null)
-  const [addingQuickTxn, setAddingQuickTxn] = useState(false)
 
   const { accounts, activeAccountId, setActiveAccountId } = accountsState
   const activeAccount = accounts.find((a) => a.id === activeAccountId)
@@ -81,22 +80,6 @@ function LedgerApp({ userId, onSignOut }: { userId: string; onSignOut: () => voi
       new Audio(url).play()
     } catch {
       // ignore playback failure
-    }
-  }
-
-  async function handleQuickAllowance() {
-    if (!activeAccountId || addingQuickTxn) return
-    setAddingQuickTxn(true)
-    try {
-      await txnsState.addTransaction(activeAccountId, {
-        type: 'in',
-        amount: 150000,
-        category: 'From Dad',
-        note: 'Monthly allowance',
-        voiceNoteUrl: null,
-      })
-    } finally {
-      setAddingQuickTxn(false)
     }
   }
 
@@ -167,11 +150,9 @@ function LedgerApp({ userId, onSignOut }: { userId: string; onSignOut: () => voi
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onOpenMenu={() => setModal({ kind: 'accMenu' })}
-        onQuickAllowance={handleQuickAllowance}
         onOpenNewTxn={openNewTxn}
         onOpenTxnDetail={(id) => setModal({ kind: 'txnDetail', txnId: id })}
         onPlayVoice={playVoiceFromList}
-        addingQuickTxn={addingQuickTxn}
       />
 
       <button className="fab" onClick={() => openNewTxn('out')}>

@@ -8,22 +8,18 @@ export function Ledger({
   searchQuery,
   onSearchChange,
   onOpenMenu,
-  onQuickAllowance,
   onOpenNewTxn,
   onOpenTxnDetail,
   onPlayVoice,
-  addingQuickTxn,
 }: {
   account: Account
   allTxns: Transaction[]
   searchQuery: string
   onSearchChange: (v: string) => void
   onOpenMenu: () => void
-  onQuickAllowance: () => void
   onOpenNewTxn: (type: 'in' | 'out') => void
   onOpenTxnDetail: (id: string) => void
   onPlayVoice: (txn: Transaction) => void
-  addingQuickTxn: boolean
 }) {
   const bal = balanceOf(allTxns)
   const stats = monthStats(allTxns)
@@ -71,8 +67,8 @@ export function Ledger({
       </div>
 
       <div className="quickAdd">
-        <button className="quickBtn" onClick={onQuickAllowance} disabled={addingQuickTxn}>
-          💰 Add 150,000 from Dad
+        <button className="quickBtn" onClick={() => onOpenNewTxn('in')}>
+          + Income
         </button>
         <button className="quickBtn secondary" onClick={() => onOpenNewTxn('out')}>
           − Expense
