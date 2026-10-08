@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
+  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
   signOut as fbSignOut,
   type User,
 } from 'firebase/auth'
@@ -16,6 +19,7 @@ const AUTH_MESSAGES: Record<string, string> = {
   'auth/weak-password': 'Password must be at least 6 characters.',
   'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
   'auth/network-request-failed': 'Network error. Check your internet connection.',
+  'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
   'auth/operation-not-allowed': 'Email/password sign-in is not enabled in Firebase Authentication.',
 }
 
@@ -51,9 +55,23 @@ export function useAuth() {
     }
   }
 
+  async function signInWithGoogle() {
+    const provider = new GoogleAuthProvider()
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (err) {
+      // Some in-app browsers / WebViews block popups; fall back to a full-page redirect.
+      if (err instanceof FirebaseError && err.code === 'auth/popup-blocked') {
+        await signInWithRedirect(auth, provider)
+        return
+      }
+      throw friendly(err)
+    }
+  }
+
   async function signOut() {
     await fbSignOut(auth)
   }
 
-  return { user: user ? { id: user.uid, email: user.email } : null, loading, signIn, signUp, signOut }
+  return { user: user ? { id: user.uid, email: user.email } : null, loading, signIn, signUp, signInWithGoogle, signOut }
 }
