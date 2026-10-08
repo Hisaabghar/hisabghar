@@ -59,17 +59,22 @@ export async function askGemini(question: string, context: string, history: Cont
     } catch (err) {
       lastErr = err
       const msg = String((err as Error)?.message ?? err)
-      // Only move on to the next model when this one isn't available.
-      if (!/not.?found|404|unsupported|not supported|does not exist/i.test(msg)) break
+      // Move on to the next model when this one is missing or overloaded;
+      // anything else (not enabled, quota, offline) won't be fixed by another model.
+      if (!isUnavailable(msg) && !isBusy(msg)) break
     }
   }
   throw friendly(lastErr)
 }
 
+const isUnavailable = (m: string) => /not.?found|404|unsupported|not supported|does not exist/i.test(m)
+const isBusy = (m: string) => /high demand|overloaded|unavailable|\[50[0-9]|\b50[0-9]\b|try again later/i.test(m)
+
 function friendly(err: unknown): Error {
   const msg = String((err as Error)?.message ?? err)
   const detail = `\n\n(Details: ${msg.slice(0, 300)})`
-  if (/api-not-enabled|AI Logic|firebasevertexai|PERMISSION_DENIED|403/i.test(msg))
+  if (isBusy(msg)) return new Error('Gemini is very busy right now (Google’s servers are under high demand). Please try again in a minute, or use Offline mode.' + detail)
+  if (/api-not-enabled|has not been used|is disabled|SERVICE_DISABLED|PERMISSION_DENIED|\b403\b/i.test(msg))
     return new Error('Gemini is not switched on yet. In Firebase console open AI Logic → Get started → Gemini Developer API.' + detail)
   if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error('The free Gemini limit is used up for now. Try again later, or use Offline mode.' + detail)
   if (/network|fetch|Failed to fetch/i.test(msg)) return new Error('No internet connection.')
