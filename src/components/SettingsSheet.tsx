@@ -5,6 +5,7 @@ import { settingsDoc } from '../lib/paths'
 import { mergeDoc } from '../hooks/useData'
 import { COPY_TYPES, HOME_ACCOUNTS, NETWORKS } from '../lib/catalog'
 import { sha256 } from '../lib/format'
+import { setSoundOn, soundOn } from '../lib/sound'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
 
@@ -27,6 +28,7 @@ export function SettingsSheet({
     Object.fromEntries(COPY_TYPES.map((t) => [t, String(settings.rates[t] ?? '')])),
   )
   const [bizName, setBizName] = useState(settings.businessName ?? '')
+  const [sound, setSound] = useState(soundOn())
   const [oldPin, setOldPin] = useState('')
   const [pinStep, setPinStep] = useState<'old' | 'new'>('old')
   const [newPin, setNewPin] = useState('')
@@ -74,6 +76,20 @@ export function SettingsSheet({
   return (
     <Sheet title="Settings" onClose={onClose}>
       {msg && <div className={`errorBanner ${msg.includes('✓') ? 'successBanner' : ''}`}>{msg}</div>}
+
+      <div className="settingsGroup">
+        <label className="checkRow soundRow">
+          <input
+            type="checkbox"
+            checked={sound}
+            onChange={(e) => {
+              setSound(e.target.checked)
+              setSoundOn(e.target.checked)
+            }}
+          />
+          🔊 Click sounds (this device)
+        </label>
+      </div>
 
       <div className="settingsGroup">
         <div className="settingsHead">Business name</div>

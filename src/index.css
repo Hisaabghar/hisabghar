@@ -2433,3 +2433,9 @@ button {
   margin-bottom: 16px;
   filter: drop-shadow(0 10px 20px rgba(15, 118, 110, 0.3));
 }
+
+.soundRow {
+  margin-top: 0;
+  font-weight: 600;
+  color: var(--text);
+}
