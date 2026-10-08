@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { BizEntry, BizKind, CustomBiz, Wallet } from '../../types'
+import type { BizEntry, BizKind, CustomBiz, Product, Wallet } from '../../types'
+import { moveStock } from '../../lib/stock'
 import { bizCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
 import { rsRaw } from '../../lib/format'
@@ -19,8 +20,10 @@ export function BizForm({
   networks,
   customs,
   initialBiz,
+  products,
   onClose,
 }: {
+  products: Product[]
   networks: string[]
   customs: CustomBiz[]
   initialBiz?: string
@@ -49,6 +52,8 @@ export function BizForm({
   const [rate, setRate] = useState(String(rates[COPY_TYPES[0]] ?? ''))
   // accessories
   const [item, setItem] = useState('')
+  const [productId, setProductId] = useState('')
+  const product = products.find((p) => p.id === productId)
   const [cost, setCost] = useState('')
   // online
   const [service, setService] = useState(ONLINE_SERVICES[0])
@@ -72,6 +77,7 @@ export function BizForm({
       cost: num(cost),
       amount: q * num(amount),
       profit: q * (num(amount) - num(cost)),
+      ...(product ? { productId: product.id } : {}),
     }
   if (kind === 'custom' && biz && num(amount) > 0)
     draft = { kind, date, note, biz, item: item.trim(), cost: num(cost), amount: num(amount), profit: num(amount) - num(cost) }
@@ -93,7 +99,11 @@ export function BizForm({
       title="New entry"
       onClose={onClose}
       canSave={!!draft}
-      onSave={() => addItem(bizCol(uid), { ...draft!, note: note.trim() })}
+      onSave={async () => {
+        await addItem(bizCol(uid), { ...draft!, note: note.trim() })
+        // Selling from stock takes the items out of inventory.
+        if (draft!.kind === 'acc' && product) await moveStock(uid, product, -q, 'sale', { date, note: note.trim() })
+      }}
     >
       <div className="kindPicker">
         {(Object.keys(KIND_LABEL) as BizKind[])
@@ -265,9 +275,37 @@ export function BizForm({
 
       {kind === 'acc' && (
         <>
+          {products.length > 0 && (
+            <Field label="From stock (optional)">
+              <select
+                value={productId}
+                onChange={(e) => {
+                  const p = products.find((x) => x.id === e.target.value)
+                  setProductId(e.target.value)
+                  if (p) {
+                    setItem(p.name)
+                    setAmount(String(p.salePrice))
+                    setCost(String(p.costPrice))
+                  }
+                }}
+              >
+                <option value="">— Not from stock —</option>
+                {[...products]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.qty} {p.unit} left)
+                    </option>
+                  ))}
+              </select>
+            </Field>
+          )}
           <Field label="Item">
-            <input value={item} onChange={(e) => setItem(e.target.value)} placeholder="e.g. Charger, Handsfree, Cover" autoFocus />
+            <input value={item} onChange={(e) => setItem(e.target.value)} placeholder="e.g. Charger, Handsfree, Cover" autoFocus={!products.length} />
           </Field>
+          {product && q > product.qty && (
+            <div className="errorBanner">Only {product.qty} {product.unit} in stock — the count will go below zero.</div>
+          )}
           <div className="twoFields">
             <Field label="Quantity">
               <MoneyInput value={qty} onChange={setQty} placeholder="1" />

@@ -70,6 +70,9 @@ export function allHomeAccounts(extra: string[] = []) {
   })
 }
 
+export const STOCK_CATEGORIES = ['Mobile accessories', 'Photocopy supplies', 'Stationery', 'Mobile phones', 'Other']
+export const STOCK_UNITS = ['pcs', 'pack', 'box', 'ream', 'dozen']
+
 export const NETWORKS = ['Jazz', 'Zong', 'Telenor', 'Ufone', 'Onic']
 /** Built-in networks plus the user's own, without duplicates. */
 export function allNetworks(extra: string[] = []) {

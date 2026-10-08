@@ -57,6 +57,8 @@ export interface BizEntry {
   // accessories
   item?: string
   cost?: number
+  // sale taken from stock (accessories)
+  productId?: string
   // user-defined business (kind 'custom')
   biz?: string
   // online kaam
@@ -80,6 +82,33 @@ export interface DayOpening {
   cash: number
   easypaisa: number
   jazzcash: number
+}
+
+/** A product kept in stock. `qty` is the live count, changed with Firestore increments. */
+export interface Product {
+  id: string
+  name: string
+  category: string
+  unit: string
+  costPrice: number
+  salePrice: number
+  qty: number
+  /** Warn when qty falls to this level or below. */
+  minQty: number
+  createdAt: number
+}
+
+export type StockReason = 'opening' | 'purchase' | 'sale' | 'adjust'
+export interface StockMove {
+  id: string
+  productId: string
+  name: string
+  change: number
+  reason: StockReason
+  unitCost?: number
+  note: string
+  date: string
+  createdAt: number
 }
 
 /** A business category the user added (e.g. Tea stall, Bike repair). */

@@ -12,15 +12,20 @@ import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
 import { InvestTab } from './InvestTab'
 import { AddBizSheet } from './AddBizSheet'
+import { StockTab } from './StockTab'
+import { isLow } from '../../lib/stock'
+import { stockCol } from '../../lib/paths'
+import type { Product } from '../../types'
 
 /** Built-in pages, a page per user-added category (`c:<name>`), then Investment. */
-export type BizTab = 'dash' | Exclude<BizKind, 'custom'> | 'invest' | `c:${string}`
+export type BizTab = 'dash' | Exclude<BizKind, 'custom'> | 'stock' | 'invest' | `c:${string}`
 const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'dash', label: 'Dashboard', icon: '📊' },
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
   { id: 'load', label: 'Load', icon: '📶' },
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
   { id: 'acc', label: 'Accessories', icon: '🎧' },
+  { id: 'stock', label: 'Stock', icon: '📦' },
   { id: 'online', label: 'Online services', icon: '🪪' },
 ]
 
@@ -57,6 +62,9 @@ export function BizSection({
   const tabs = bizTabs(settings)
   const customIcon = (name?: string) => customs.find((c) => c.name === name)?.icon ?? KIND_ICON.custom
   const customTab = tab.startsWith('c:') ? tab.slice(2) : null
+  const stock = useLiveQuery<Product>(stockCol(uid), `stock-${uid}`)
+  const lowStock = stock.items.filter(isLow)
+  const noPeriod = tab === 'invest' || tab === 'stock'
   const [deleting, setDeleting] = useState<BizEntry | null>(null)
   const [editOpening, setEditOpening] = useState(false)
 
@@ -112,9 +120,10 @@ export function BizSection({
       </div>
       <div className="pageHead">
         <h1 className="pageTitle desktopOnly">{tabs.find((t) => t.id === tab)?.label}</h1>
-        {tab !== 'invest' && <PeriodBar period={period} onChange={setPeriod} />}
+        {!noPeriod && <PeriodBar period={period} onChange={setPeriod} />}
       </div>
       {tab === 'invest' && <InvestTab uid={uid} />}
+      {tab === 'stock' && <StockTab uid={uid} />}
       {error && <div className="errorBanner">{error}</div>}
 
       {tab === 'dash' && (
@@ -149,6 +158,16 @@ export function BizSection({
                 </button>
               )}
             </Card>
+          )}
+          {lowStock.length > 0 && (
+            <button className="setupBanner warn" onClick={() => setTab('stock')}>
+              <b>⚠️ {lowStock.length} product{lowStock.length > 1 ? 's' : ''} running low:</b>{' '}
+              {lowStock
+                .slice(0, 4)
+                .map((p) => `${p.name} (${p.qty} left)`)
+                .join(', ')}
+              {lowStock.length > 4 ? '…' : ''} ›
+            </button>
           )}
           <Card title="Quick add">
             <QuickActions
@@ -348,11 +367,13 @@ export function BizSection({
         </>
       )}
 
-      {tab !== 'invest' && (
+      {!noPeriod && (
         <Fab
           label="New entry"
           onClick={() =>
-            customTab !== null ? setAdding('custom', customTab) : setAdding(tab === 'dash' || tab.startsWith('c:') ? 'wallet' : (tab as BizKind))
+            customTab !== null
+              ? setAdding('custom', customTab)
+              : setAdding(tab === 'dash' || tab.startsWith('c:') ? 'wallet' : (tab as BizKind))
           }
         />
       )}
@@ -371,6 +392,7 @@ export function BizSection({
           initialKind={adding.kind}
           initialBiz={adding.biz}
           customs={customs}
+          products={stock.items}
           date={newDate}
           rates={settings.rates}
           networks={allNetworks(settings.networks)}

@@ -1931,3 +1931,56 @@ button {
   border: 1px dashed var(--brand-2);
   background: transparent;
 }
+
+/* ---------- Stock ---------- */
+.stockTools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.stockSearch {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--font);
+}
+.stockSearch:focus {
+  outline: none;
+  border-color: var(--brand-2);
+}
+.productStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.productStats div {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.productStats span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.productStats b {
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+.lowTxt {
+  color: var(--out-text);
+}
+
+.setupBanner.warn {
+  border-color: #f5b942;
+  background: rgba(245, 185, 66, 0.1);
+  margin: 0 0 12px;
+}
