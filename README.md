@@ -2,32 +2,48 @@
 
 A personal cashbook app for tracking a monthly allowance across multiple named accounts,
 with voice notes on transactions. React + TypeScript + Vite, wrapped with Capacitor for
-Android, backed by Supabase (Postgres + Auth + Storage).
+Android, backed by Firebase (Auth + Firestore + Storage), hosted on Firebase Hosting.
 
-## 1. Set up Supabase
+## 1. Set up Firebase
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Open the SQL editor and run everything in [`supabase/schema.sql`](supabase/schema.sql).
-   This creates the `accounts` and `transactions` tables, enables Row Level Security with
-   single-user (owner-only) policies, and creates a private `voice-notes` storage bucket
-   with matching storage policies.
-3. In **Project Settings → API**, copy the **Project URL** and **anon public** key.
-4. Copy `.env.example` to `.env` and fill in those two values:
+The app uses the Firebase project `mera-khata-30f9b` (set in [`.firebaserc`](.firebaserc)).
+
+1. In the [Firebase console](https://console.firebase.google.com), open the project.
+2. **Authentication → Get started → Sign-in method → Email/Password → Enable.**
+3. **Firestore Database → Create database** (production mode, any region).
+4. **Storage → Get started** (needed for voice notes; requires the Blaze plan on new projects).
+5. **Project settings → General → Your apps → Add app → Web (`</>`)**, register it, and
+   copy the config values into a `.env` file (see [`.env.example`](.env.example)):
    ```
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-public-key
+   VITE_FIREBASE_API_KEY=...
+   VITE_FIREBASE_AUTH_DOMAIN=mera-khata-30f9b.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=mera-khata-30f9b
+   VITE_FIREBASE_STORAGE_BUCKET=mera-khata-30f9b.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=...
+   VITE_FIREBASE_APP_ID=...
    ```
-5. By default Supabase requires email confirmation for new sign-ups. For fastest setup
-   during development, you can disable that under **Authentication → Providers → Email →
-   Confirm email**, or just confirm the email link once.
 
-### Schema notes / future companion app
+### Data layout
 
-`accounts` and `transactions` both carry a `user_id` column and RLS policies keyed off
-`auth.uid()`. A second "viewer" client (e.g. a companion app for a family member) can be
-added later purely at the Supabase layer — either a read-only policy for a different
-auth role, or an `account_shares` table joined into the select policies — without any
-changes to these tables or to this app's code.
+All data for a user lives under `users/{uid}` in Firestore:
+
+- `users/{uid}/accounts/{accountId}` — `name`, `createdAt`
+- `users/{uid}/transactions/{txnId}` — `accountId`, `type`, `amount`, `category`, `note`,
+  `voiceNoteUrl`, `createdAt`
+
+Voice notes are stored at `voice-notes/{uid}/...` in Storage. [`firestore.rules`](firestore.rules)
+and [`storage.rules`](storage.rules) restrict each user to their own data.
+
+## Deploy to Firebase Hosting
+
+```bash
+npm install -g firebase-tools
+firebase login
+npm run build
+firebase deploy          # hosting + Firestore and Storage rules
+```
+
+The site is served at https://mera-khata-30f9b.web.app.
 
 ## 2. Run the app in dev
 
@@ -80,7 +96,7 @@ new APK replace the old install.
 **debug** APK automatically:
 
 1. Push this repo to GitHub.
-2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository secrets
+2. Add the six `VITE_FIREBASE_*` values from `.env` as repository secrets
    (**Settings → Secrets and variables → Actions**).
 3. Run the workflow from the **Actions** tab (or push to `main`).
 4. Download the `ledger-debug-apk` artifact and install it on your phone.
@@ -95,8 +111,10 @@ a keystore decoded from a secret — ask if you'd like that added once you have 
 src/
   components/       UI (Ledger card, transaction list, modals)
   hooks/             useAuth, useAccounts, useTransactions, useVoiceRecorder
-  lib/               supabase client, data mappers, voice note upload/signing, utils
+  lib/               Firebase client, Firestore paths, voice note upload, utils
   types.ts
-supabase/schema.sql  Full DB schema, RLS policies, storage bucket + policies
+firebase.json        Hosting config + rules file locations
+firestore.rules      Firestore security rules (owner-only)
+storage.rules        Storage security rules (owner-only voice notes)
 android/             Capacitor-generated native Android project
 ```

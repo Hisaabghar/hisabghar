@@ -1,17 +1,12 @@
-import { supabase, VOICE_NOTES_BUCKET } from './supabase'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { storage } from './firebase'
 
 export async function uploadVoiceNote(userId: string, blob: Blob): Promise<string> {
-  const path = `${userId}/${crypto.randomUUID()}.webm`
-  const { error } = await supabase.storage.from(VOICE_NOTES_BUCKET).upload(path, blob, {
-    contentType: 'audio/webm',
-    upsert: false,
-  })
-  if (error) throw error
+  const path = `voice-notes/${userId}/${crypto.randomUUID()}.webm`
+  await uploadBytes(ref(storage, path), blob, { contentType: 'audio/webm' })
   return path
 }
 
 export async function getVoiceNoteUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(VOICE_NOTES_BUCKET).createSignedUrl(path, 60)
-  if (error) throw error
-  return data.signedUrl
+  return getDownloadURL(ref(storage, path))
 }

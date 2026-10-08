@@ -7,7 +7,6 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [signedUpMsg, setSignedUpMsg] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -18,7 +17,6 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
         await auth.signIn(email, password)
       } else {
         await auth.signUp(email, password)
-        setSignedUpMsg(true)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -34,11 +32,6 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
         <div className="authTitle">Ledger</div>
         <div className="authSubtitle">your money, your voice — sign in to your cashbook</div>
         {error && <div className="errorBanner">{error}</div>}
-        {signedUpMsg && (
-          <div className="errorBanner successBanner">
-            Account created. Check your email to confirm, then sign in.
-          </div>
-        )}
         <form onSubmit={onSubmit}>
           <div className="field">
             <label>Email</label>

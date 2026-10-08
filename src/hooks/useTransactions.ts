@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { txnFromRow, type TransactionRow } from '../lib/mappers'
+import { addDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore'
+import { txnDoc, txnsCol } from '../lib/paths'
 import type { Transaction, TxnType } from '../types'
+
+function errMsg(err: unknown) {
+  return err instanceof Error ? err.message : 'Something went wrong'
+}
 
 export interface NewTxnInput {
   type: TxnType
@@ -17,24 +21,26 @@ export function useTransactions(userId: string | null, accountId: string | null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (accId: string, force = false) => {
-    if (!force && cache.current[accId]) return
-    setLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('account_id', accId)
-      .order('created_at', { ascending: false })
-    if (err) {
-      setError(err.message)
-      setLoading(false)
-      return
-    }
-    cache.current[accId] = ((data ?? []) as TransactionRow[]).map(txnFromRow)
-    setVersion((v) => v + 1)
-    setLoading(false)
-  }, [])
+  const load = useCallback(
+    async (accId: string, force = false) => {
+      if (!userId || (!force && cache.current[accId])) return
+      setLoading(true)
+      setError(null)
+      try {
+        // Sorted client-side so no composite Firestore index is needed.
+        const snap = await getDocs(query(txnsCol(userId), where('accountId', '==', accId)))
+        cache.current[accId] = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Transaction, 'id'>) }))
+          .sort((a, b) => b.createdAt - a.createdAt)
+        setVersion((v) => v + 1)
+      } catch (err) {
+        setError(errMsg(err))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [userId],
+  )
 
   useEffect(() => {
     if (accountId) load(accountId)
@@ -42,36 +48,25 @@ export function useTransactions(userId: string | null, accountId: string | null)
 
   async function addTransaction(accId: string, input: NewTxnInput) {
     if (!userId) return
-    const { data, error: err } = await supabase
-      .from('transactions')
-      .insert({
-        account_id: accId,
-        user_id: userId,
-        type: input.type,
-        amount: input.amount,
-        category: input.category,
-        note: input.note,
-        voice_note_url: input.voiceNoteUrl,
-      })
-      .select('*')
-      .single()
-    if (err) {
-      setError(err.message)
-      return
+    const data: Omit<Transaction, 'id'> = { accountId: accId, ...input, createdAt: Date.now() }
+    try {
+      const ref = await addDoc(txnsCol(userId), data)
+      cache.current[accId] = [{ id: ref.id, ...data }, ...(cache.current[accId] ?? [])]
+      setVersion((v) => v + 1)
+    } catch (err) {
+      setError(errMsg(err))
     }
-    const txn = txnFromRow(data as TransactionRow)
-    cache.current[accId] = [txn, ...(cache.current[accId] ?? [])]
-    setVersion((v) => v + 1)
   }
 
   async function deleteTransaction(accId: string, id: string) {
-    const { error: err } = await supabase.from('transactions').delete().eq('id', id)
-    if (err) {
-      setError(err.message)
-      return
+    if (!userId) return
+    try {
+      await deleteDoc(txnDoc(userId, id))
+      cache.current[accId] = (cache.current[accId] ?? []).filter((t) => t.id !== id)
+      setVersion((v) => v + 1)
+    } catch (err) {
+      setError(errMsg(err))
     }
-    cache.current[accId] = (cache.current[accId] ?? []).filter((t) => t.id !== id)
-    setVersion((v) => v + 1)
   }
 
   function purgeAccount(accId: string) {

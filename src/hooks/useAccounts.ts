@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { accountFromRow, type AccountRow } from '../lib/mappers'
+import { addDoc, deleteDoc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import { accountDoc, accountsCol, txnsCol } from '../lib/paths'
 import type { Account } from '../types'
+
+function errMsg(err: unknown) {
+  return err instanceof Error ? err.message : 'Something went wrong'
+}
+
+async function createAccount(uid: string, name: string): Promise<Account> {
+  const createdAt = Date.now()
+  const ref = await addDoc(accountsCol(uid), { name, createdAt })
+  return { id: ref.id, name, createdAt }
+}
 
 export function useAccounts(userId: string | null) {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -13,33 +24,21 @@ export function useAccounts(userId: string | null) {
     if (!userId) return
     setLoading(true)
     setError(null)
-    const { data, error: err } = await supabase
-      .from('accounts')
-      .select('*')
-      .order('created_at', { ascending: true })
-    if (err) {
-      setError(err.message)
-      setLoading(false)
-      return
-    }
-    let rows = (data ?? []) as AccountRow[]
-    if (rows.length === 0) {
-      const { data: created, error: createErr } = await supabase
-        .from('accounts')
-        .insert({ name: 'Main Ledger', user_id: userId })
-        .select('*')
-        .single()
-      if (createErr) {
-        setError(createErr.message)
-        setLoading(false)
-        return
+    try {
+      const snap = await getDocs(accountsCol(userId))
+      let mapped: Account[] = snap.docs
+        .map((d) => ({ id: d.id, name: d.data().name as string, createdAt: d.data().createdAt as number }))
+        .sort((a, b) => a.createdAt - b.createdAt)
+      if (mapped.length === 0) {
+        mapped = [await createAccount(userId, 'Main Ledger')]
       }
-      rows = [created as AccountRow]
+      setAccounts(mapped)
+      setActiveAccountId((prev) => (prev && mapped.some((a) => a.id === prev) ? prev : mapped[0].id))
+    } catch (err) {
+      setError(errMsg(err))
+    } finally {
+      setLoading(false)
     }
-    const mapped = rows.map(accountFromRow)
-    setAccounts(mapped)
-    setActiveAccountId((prev) => (prev && mapped.some((a) => a.id === prev) ? prev : mapped[0].id))
-    setLoading(false)
   }, [userId])
 
   useEffect(() => {
@@ -49,39 +48,43 @@ export function useAccounts(userId: string | null) {
   async function addAccount(name: string) {
     const trimmed = name.trim()
     if (!trimmed || !userId) return
-    const { data, error: err } = await supabase
-      .from('accounts')
-      .insert({ name: trimmed, user_id: userId })
-      .select('*')
-      .single()
-    if (err) {
-      setError(err.message)
-      return
+    try {
+      const acc = await createAccount(userId, trimmed)
+      setAccounts((prev) => [...prev, acc])
+      setActiveAccountId(acc.id)
+    } catch (err) {
+      setError(errMsg(err))
     }
-    const acc = accountFromRow(data as AccountRow)
-    setAccounts((prev) => [...prev, acc])
-    setActiveAccountId(acc.id)
   }
 
   async function renameAccount(id: string, name: string) {
     const trimmed = name.trim()
-    if (!trimmed) return
-    const { error: err } = await supabase.from('accounts').update({ name: trimmed }).eq('id', id)
-    if (err) {
-      setError(err.message)
-      return
+    if (!trimmed || !userId) return
+    try {
+      await updateDoc(accountDoc(userId, id), { name: trimmed })
+      setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, name: trimmed } : a)))
+    } catch (err) {
+      setError(errMsg(err))
     }
-    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, name: trimmed } : a)))
   }
 
   async function deleteAccount(id: string) {
+    if (!userId) return false
     if (accounts.length <= 1) {
       setError('You need at least one account — create another before deleting this one.')
       return false
     }
-    const { error: err } = await supabase.from('accounts').delete().eq('id', id)
-    if (err) {
-      setError(err.message)
+    try {
+      // Firestore has no cascading deletes, so remove the account's entries first.
+      const txns = await getDocs(query(txnsCol(userId), where('accountId', '==', id)))
+      for (let i = 0; i < txns.docs.length; i += 450) {
+        const batch = writeBatch(db)
+        txns.docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref))
+        await batch.commit()
+      }
+      await deleteDoc(accountDoc(userId, id))
+    } catch (err) {
+      setError(errMsg(err))
       return false
     }
     const remaining = accounts.filter((a) => a.id !== id)

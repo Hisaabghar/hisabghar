@@ -1,35 +1,59 @@
 import { useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut as fbSignOut,
+  type User,
+} from 'firebase/auth'
+import { FirebaseError } from 'firebase/app'
+import { auth } from '../lib/firebase'
+
+const AUTH_MESSAGES: Record<string, string> = {
+  'auth/invalid-credential': 'Incorrect email or password.',
+  'auth/invalid-email': 'Please enter a valid email address.',
+  'auth/email-already-in-use': 'An account with this email already exists. Sign in instead.',
+  'auth/weak-password': 'Password must be at least 6 characters.',
+  'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+  'auth/network-request-failed': 'Network error. Check your internet connection.',
+  'auth/operation-not-allowed': 'Email/password sign-in is not enabled in Firebase Authentication.',
+}
+
+function friendly(err: unknown): Error {
+  if (err instanceof FirebaseError) return new Error(AUTH_MESSAGES[err.code] ?? err.message)
+  return err instanceof Error ? err : new Error('Something went wrong')
+}
 
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s)
-    })
-    return () => sub.subscription.unsubscribe()
   }, [])
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+    } catch (err) {
+      throw friendly(err)
+    }
   }
 
   async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
+    try {
+      await createUserWithEmailAndPassword(auth, email, password)
+    } catch (err) {
+      throw friendly(err)
+    }
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await fbSignOut(auth)
   }
 
-  return { session, user: session?.user ?? null, loading, signIn, signUp, signOut }
+  return { user: user ? { id: user.uid, email: user.email } : null, loading, signIn, signUp, signOut }
 }
