@@ -5,7 +5,7 @@ export const KIND_LABEL: Record<BizKind, string> = {
   wallet: 'Easypaisa / JazzCash',
   load: 'Load',
   copy: 'Photocopy / Print',
-  acc: 'Mobile accessories',
+  acc: 'Product sales',
   online: 'Online services',
   custom: 'Other business',
 }
@@ -14,11 +14,11 @@ export const KIND_SHORT: Record<BizKind, string> = {
   wallet: 'Easypaisa/JazzCash',
   load: 'Load',
   copy: 'Photocopy',
-  acc: 'Accessories',
+  acc: 'Sales',
   online: 'Online',
   custom: 'Other',
 }
-export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '📝', custom: '🧩' }
+export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🛍️', online: '📝', custom: '🧩' }
 
 export const BIZ_ICONS = ['🧩', '🍵', '🔧', '🧵', '💇', '🍔', '🛒', '🚲', '📚', '🎂', '🧴', '📦', '💻', '🧹', '🚚', '🌾']
 
@@ -45,6 +45,7 @@ export function entrySub(e: BizEntry): string | undefined {
   const parts: string[] = []
   if (e.kind === 'online' && e.customer) parts.push(e.customer)
   if (e.note) parts.push(e.note)
+  if (e.discount) parts.push(`Discount ${rs(e.discount)}`)
   if (e.kind === 'wallet') parts.push(`Commission ${rs(e.profit)}`)
   else if (e.kind !== 'copy') parts.push(`Profit ${rs(e.profit)}`)
   return parts.join(' · ') || undefined

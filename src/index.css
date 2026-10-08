@@ -2151,3 +2151,115 @@ button {
   padding: 6px 8px;
   margin-bottom: 4px;
 }
+
+/* ---------- Sell ---------- */
+.saleLine {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px 12px;
+  margin-bottom: 10px;
+  background: var(--surface-2);
+}
+.saleLineHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.saleLine select,
+.saleLine .saleName {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--font);
+  margin-bottom: 4px;
+}
+.saleLine .field {
+  margin-top: 8px;
+}
+.saleLine .field input {
+  background: var(--surface);
+}
+.threeFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 8px;
+}
+.discRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.receipt {
+  margin-top: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+}
+.receipt div {
+  display: flex;
+  justify-content: space-between;
+}
+.receipt .disc {
+  color: var(--out-text);
+}
+.receipt .grand {
+  font-size: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+}
+.receipt .muted {
+  color: var(--in-text);
+}
+.receipt .neg {
+  color: var(--out-text);
+}
+
+.sellBig {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 13px;
+  margin-bottom: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  box-shadow: 0 8px 18px rgba(234, 88, 12, 0.25);
+  cursor: pointer;
+}
+.sellBig:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+.batchList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.batchList div {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.batchList div.cur {
+  border: 1px solid var(--brand-2);
+}

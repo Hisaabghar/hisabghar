@@ -81,7 +81,7 @@ const BIZ_NAMES: Record<string, string> = {
   wallet: 'Easypaisa / JazzCash',
   load: 'Load',
   copy: 'Photocopy / Print',
-  acc: 'Accessories',
+  acc: 'Product sales',
   online: 'Online services',
 }
 

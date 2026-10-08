@@ -5,7 +5,8 @@ import { stockCol, stockLogCol } from '../../lib/paths'
 import { allByDate, useLiveQuery } from '../../hooks/useData'
 import { rs, shortDate, sum, today } from '../../lib/format'
 import { STOCK_CATEGORIES, STOCK_UNITS } from '../../lib/catalog'
-import { isLow, moveStock } from '../../lib/stock'
+import { addStock, batchesOf, isLow, takeStock } from '../../lib/stock'
+import { SellSheet } from './SellSheet'
 import { Card, Chips, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
 import { Sheet } from '../ui/Sheet'
 
@@ -23,6 +24,7 @@ export function StockTab({ uid }: { uid: string }) {
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
+  const [selling, setSelling] = useState(false)
 
   const all = [...products.items].sort((a, b) => a.name.localeCompare(b.name))
   const cats = ['All', ...new Set(all.map((p) => p.category))]
@@ -61,6 +63,10 @@ export function StockTab({ uid }: { uid: string }) {
         </Card>
       )}
 
+      <button className="sellBig" onClick={() => setSelling(true)} disabled={!all.length}>
+        🛒 Sell items
+      </button>
+
       <Card title="All products">
         <div className="stockTools">
           <input className="stockSearch" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products…" />
@@ -72,7 +78,7 @@ export function StockTab({ uid }: { uid: string }) {
               key={p.id}
               icon={String(Math.max(0, p.qty))}
               title={p.name}
-              sub={`${p.category} · cost ${rs(p.costPrice)} · sale ${rs(p.salePrice)}`}
+              sub={`${p.category} · cost ${rs(p.costPrice)}${batchesOf(p).length > 1 ? ` (+${batchesOf(p).length - 1} newer)` : ''} · sale ${rs(p.salePrice)}`}
               amount={`${p.qty} ${p.unit}`}
               amountSub={rs(Math.max(0, p.qty) * p.costPrice)}
               tone={isLow(p) ? 'out' : 'in'}
@@ -83,6 +89,7 @@ export function StockTab({ uid }: { uid: string }) {
       </Card>
 
       <Fab label="Add product" onClick={() => setAdding(true)} />
+      {selling && <SellSheet uid={uid} products={all} date={today()} onClose={() => setSelling(false)} />}
       {adding && <ProductForm uid={uid} onClose={() => setAdding(false)} />}
       {current && (
         <ProductSheet uid={uid} p={current} log={log.items.filter((m) => m.productId === current.id)} onClose={() => setOpen(null)} />
@@ -115,11 +122,13 @@ function ProductForm({ uid, edit, onClose }: { uid: string; edit?: Product; onCl
           minQty: num(minQty),
         }
         if (edit) {
-          await updateDoc(doc(stockCol(uid), edit.id), data)
+          // Cost comes from the stock batches once stock has been bought.
+          const { costPrice, ...rest } = data
+          await updateDoc(doc(stockCol(uid), edit.id), edit.batches?.length ? rest : { ...rest, costPrice })
           return
         }
         const ref = await addDoc(stockCol(uid), { ...data, qty: 0, createdAt: Date.now() })
-        if (num(qty) > 0) await moveStock(uid, { id: ref.id, name: data.name }, num(qty), 'opening', { unitCost: num(cost) })
+        if (num(qty) > 0) await addStock(uid, { id: ref.id, name: data.name }, num(qty), num(cost), { reason: 'opening' })
       }}
     >
       <Field label="Product name">
@@ -132,9 +141,11 @@ function ProductForm({ uid, edit, onClose }: { uid: string; edit?: Product; onCl
         <Chips options={STOCK_UNITS} value={unit} onChange={setUnit} />
       </Field>
       <div className="twoFields">
-        <Field label="Cost price (each)">
-          <MoneyInput value={cost} onChange={setCost} />
-        </Field>
+        {!edit?.batches?.length && (
+          <Field label="Cost price (each)">
+            <MoneyInput value={cost} onChange={setCost} />
+          </Field>
+        )}
         <Field label="Sale price (each)">
           <MoneyInput value={sale} onChange={setSale} />
         </Field>
@@ -154,14 +165,16 @@ function ProductForm({ uid, edit, onClose }: { uid: string; edit?: Product; onCl
 }
 
 function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: StockMove[]; onClose: () => void }) {
-  const [mode, setMode] = useState<'view' | 'add' | 'remove' | 'edit'>('view')
+  const [mode, setMode] = useState<'view' | 'add' | 'remove' | 'edit' | 'sell'>('view')
   const [qty, setQty] = useState('')
-  const [cost, setCost] = useState(String(p.costPrice))
+  const batches = batchesOf(p)
+  const [cost, setCost] = useState(String(batches.length ? batches[batches.length - 1].cost : p.costPrice))
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today())
   const [confirmDel, setConfirmDel] = useState(false)
 
   if (mode === 'edit') return <ProductForm uid={uid} edit={p} onClose={() => setMode('view')} />
+  if (mode === 'sell') return <SellSheet uid={uid} products={[p]} date={today()} onClose={() => setMode('view')} />
 
   if (mode === 'add' || mode === 'remove') {
     const adding = mode === 'add'
@@ -171,12 +184,8 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
         onClose={() => setMode('view')}
         canSave={num(qty) > 0}
         onSave={async () => {
-          await moveStock(uid, p, adding ? num(qty) : -num(qty), adding ? 'purchase' : 'adjust', {
-            ...(adding ? { unitCost: num(cost) } : {}),
-            note: note.trim(),
-            date,
-          })
-          if (adding && num(cost) > 0 && num(cost) !== p.costPrice) await updateDoc(doc(stockCol(uid), p.id), { costPrice: num(cost) })
+          if (adding) await addStock(uid, p, num(qty), num(cost), { note: note.trim(), date })
+          else await takeStock(uid, p, num(qty), 'adjust', { note: note.trim(), date })
         }}
       >
         <Segmented
@@ -192,11 +201,12 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
             <MoneyInput value={qty} onChange={setQty} autoFocus />
           </Field>
           {adding && (
-            <Field label="Cost price (each)">
+            <Field label="Cost price of this new stock (each)">
               <MoneyInput value={cost} onChange={setCost} />
             </Field>
           )}
         </div>
+        {adding && <div className="statHint">New stock is kept separately at its own cost and is sold after the older stock runs out.</div>}
         <Field label="Note (optional)">
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={adding ? 'e.g. from Hall Road supplier' : 'e.g. broken'} />
         </Field>
@@ -223,10 +233,26 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
           </b>
         </div>
         <div>
-          <span>Profit each</span>
+          <span>Profit each (now)</span>
           <b>{rs(p.salePrice - p.costPrice)}</b>
         </div>
       </div>
+      {batches.length > 0 && (
+        <div className="batchList">
+          {batches.map((b, i) => (
+            <div key={i} className={i === 0 ? 'cur' : ''}>
+              <span>{i === 0 ? 'Selling now (old stock)' : `New stock ${batches.length > 2 ? i : ''}`.trim()}</span>
+              <b>
+                {b.qty} {p.unit} @ {rs(b.cost)}
+              </b>
+              <span className="statHint">{b.date ? shortDate(b.date) : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button className="sellBig" onClick={() => setMode('sell')}>
+        🛒 Sell this
+      </button>
       <div className="quickAdd">
         <button className="quickBtn" onClick={() => setMode('add')}>
           <span className="qIc">+</span> Add stock

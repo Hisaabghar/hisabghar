@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import type { BizEntry, BizKind, CustomBiz, Product, Wallet } from '../../types'
-import { moveStock } from '../../lib/stock'
+import type { BizEntry, BizKind, CustomBiz, Wallet } from '../../types'
 import { bizCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
 import { rsRaw } from '../../lib/format'
@@ -20,10 +19,11 @@ export function BizForm({
   networks,
   customs,
   initialBiz,
-  products,
+  onSell,
   onClose,
 }: {
-  products: Product[]
+  /** Sales go through the Sell screen instead of this form. */
+  onSell: () => void
   networks: string[]
   customs: CustomBiz[]
   initialBiz?: string
@@ -52,8 +52,6 @@ export function BizForm({
   const [rate, setRate] = useState(String(rates[COPY_TYPES[0]] ?? ''))
   // accessories
   const [item, setItem] = useState('')
-  const [productId, setProductId] = useState('')
-  const product = products.find((p) => p.id === productId)
   const [cost, setCost] = useState('')
   // online
   const [service, setService] = useState(ONLINE_SERVICES[0])
@@ -67,18 +65,6 @@ export function BizForm({
   if (kind === 'load' && num(amount) > 0) draft = { kind, date, note, amount: num(amount), profit: num(profit), network }
   if (kind === 'copy' && num(rate) > 0)
     draft = { kind, date, note, amount: q * num(rate), profit: q * num(rate), copyType, qty: q, rate: num(rate) }
-  if (kind === 'acc' && item.trim() && num(amount) > 0)
-    draft = {
-      kind,
-      date,
-      note,
-      item: item.trim(),
-      qty: q,
-      cost: num(cost),
-      amount: q * num(amount),
-      profit: q * (num(amount) - num(cost)),
-      ...(product ? { productId: product.id } : {}),
-    }
   if (kind === 'custom' && biz && num(amount) > 0)
     draft = { kind, date, note, biz, item: item.trim(), cost: num(cost), amount: num(amount), profit: num(amount) - num(cost) }
   if (kind === 'online' && num(amount) > 0)
@@ -99,17 +85,18 @@ export function BizForm({
       title="New entry"
       onClose={onClose}
       canSave={!!draft}
-      onSave={async () => {
-        await addItem(bizCol(uid), { ...draft!, note: note.trim() })
-        // Selling from stock takes the items out of inventory.
-        if (draft!.kind === 'acc' && product) await moveStock(uid, product, -q, 'sale', { date, note: note.trim() })
-      }}
+      onSave={() => addItem(bizCol(uid), { ...draft!, note: note.trim() })}
     >
       <div className="kindPicker">
         {(Object.keys(KIND_LABEL) as BizKind[])
           .filter((k) => k !== 'custom')
           .map((k) => (
-            <button key={k} type="button" className={`kindPick ${k === kind ? 'active' : ''}`} onClick={() => setKind(k)}>
+            <button
+              key={k}
+              type="button"
+              className={`kindPick ${k === kind ? 'active' : ''}`}
+              onClick={() => (k === 'acc' ? onSell() : setKind(k))}
+            >
               <span>{KIND_ICON[k]}</span>
               {KIND_LABEL[k]}
             </button>
@@ -269,56 +256,6 @@ export function BizForm({
           </div>
           <div className="totalLine">
             Total: <b>{rsRaw(q * num(rate))}</b>
-          </div>
-        </>
-      )}
-
-      {kind === 'acc' && (
-        <>
-          {products.length > 0 && (
-            <Field label="From stock (optional)">
-              <select
-                value={productId}
-                onChange={(e) => {
-                  const p = products.find((x) => x.id === e.target.value)
-                  setProductId(e.target.value)
-                  if (p) {
-                    setItem(p.name)
-                    setAmount(String(p.salePrice))
-                    setCost(String(p.costPrice))
-                  }
-                }}
-              >
-                <option value="">— Not from stock —</option>
-                {[...products]
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.qty} {p.unit} left)
-                    </option>
-                  ))}
-              </select>
-            </Field>
-          )}
-          <Field label="Item">
-            <input value={item} onChange={(e) => setItem(e.target.value)} placeholder="e.g. Charger, Handsfree, Cover" autoFocus={!products.length} />
-          </Field>
-          {product && q > product.qty && (
-            <div className="errorBanner">Only {product.qty} {product.unit} in stock — the count will go below zero.</div>
-          )}
-          <div className="twoFields">
-            <Field label="Quantity">
-              <MoneyInput value={qty} onChange={setQty} placeholder="1" />
-            </Field>
-            <Field label="Sale price (each)">
-              <MoneyInput value={amount} onChange={setAmount} />
-            </Field>
-          </div>
-          <Field label="Cost price (each) — for profit">
-            <MoneyInput value={cost} onChange={setCost} />
-          </Field>
-          <div className="totalLine">
-            Sale: <b>{rsRaw(q * num(amount))}</b> · Profit: <b>{rsRaw(q * (num(amount) - num(cost)))}</b>
           </div>
         </>
       )}

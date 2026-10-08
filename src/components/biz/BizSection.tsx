@@ -13,6 +13,7 @@ import { OpeningForm } from './OpeningForm'
 import { InvestTab } from './InvestTab'
 import { AddBizSheet } from './AddBizSheet'
 import { StockTab } from './StockTab'
+import { SellSheet } from './SellSheet'
 import { isLow } from '../../lib/stock'
 import { stockCol } from '../../lib/paths'
 import type { Product } from '../../types'
@@ -24,7 +25,7 @@ const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
   { id: 'load', label: 'Load', icon: '📶' },
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
-  { id: 'acc', label: 'Accessories', icon: '🎧' },
+  { id: 'acc', label: 'Sales', icon: '🛍️' },
   { id: 'stock', label: 'Stock', icon: '📦' },
   { id: 'online', label: 'Online services', icon: '📝' },
 ]
@@ -320,15 +321,19 @@ export function BizSection({
 
       {tab === 'acc' && (
         <>
-          <Hero label="Accessories profit" value={profitOf('acc')}>
+          <Hero label="Sales profit" value={profitOf('acc')}>
             <HeroStat label="Total sales" value={sum(of('acc'), (e) => e.amount)} />
-            <HeroStat label="Items" value={String(sum(of('acc'), (e) => e.qty ?? 1))} />
+            <HeroStat label="Items sold" value={String(sum(of('acc'), (e) => e.qty ?? 1))} />
+            <HeroStat label="Discount given" value={sum(of('acc'), (e) => e.discount ?? 0)} />
           </Hero>
+          <button className="sellBig" onClick={() => setAdding('acc')}>
+            🛒 New sale
+          </button>
           <Card title="Top sellers">
             <Breakdown rows={groupSum(of('acc'), (e) => e.item ?? '', (e) => e.amount).slice(0, 8)} tone="in" />
           </Card>
           <Card title="Entries">
-            <List empty="No sales">{of('acc').map(rowFor)}</List>
+            <List empty="No sales yet. Tap “New sale”.">{of('acc').map(rowFor)}</List>
           </Card>
         </>
       )}
@@ -386,13 +391,14 @@ export function BizSection({
         />
       )}
 
-      {adding && (
+      {adding?.kind === 'acc' && <SellSheet uid={uid} products={stock.items} date={newDate} onClose={() => setAdding(null)} />}
+      {adding && adding.kind !== 'acc' && (
         <BizForm
           uid={uid}
           initialKind={adding.kind}
           initialBiz={adding.biz}
           customs={customs}
-          products={stock.items}
+          onSell={() => setAdding('acc')}
           date={newDate}
           rates={settings.rates}
           networks={allNetworks(settings.networks)}

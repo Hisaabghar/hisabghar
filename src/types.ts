@@ -59,6 +59,12 @@ export interface BizEntry {
   cost?: number
   // sale taken from stock (accessories)
   productId?: string
+  /** List price per item before discount. */
+  price?: number
+  /** Discount given on this line (Rs). */
+  discount?: number
+  /** Groups the lines of one sale. */
+  saleId?: string
   // user-defined business (kind 'custom')
   biz?: string
   // online kaam
@@ -84,7 +90,14 @@ export interface DayOpening {
   jazzcash: number
 }
 
-/** A product kept in stock. `qty` is the live count, changed with Firestore increments. */
+/** One delivery of a product at one cost price. Oldest batches are sold first. */
+export interface StockBatch {
+  qty: number
+  cost: number
+  date: string
+}
+
+/** A product kept in stock. `qty` is the total count across batches. */
 export interface Product {
   id: string
   name: string
@@ -95,6 +108,8 @@ export interface Product {
   qty: number
   /** Warn when qty falls to this level or below. */
   minQty: number
+  /** Remaining stock by purchase, oldest first. Missing on products from before batches existed. */
+  batches?: StockBatch[]
   createdAt: number
 }
 
