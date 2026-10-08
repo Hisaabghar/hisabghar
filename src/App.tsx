@@ -8,7 +8,8 @@ import type { Settings } from './types'
 import { AuthScreen } from './components/AuthScreen'
 import { HOME_TABS, HomeSection, type HomeTab } from './components/home/HomeSection'
 import { PinGate } from './components/home/PinGate'
-import { BIZ_TABS, BizSection, type BizTab } from './components/biz/BizSection'
+import { BizSection, bizTabs, type BizTab } from './components/biz/BizSection'
+import { AddBizSheet } from './components/biz/AddBizSheet'
 import { SettingsSheet } from './components/SettingsSheet'
 import { mergeDoc } from './hooks/useData'
 
@@ -47,6 +48,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [homeTab, setHomeTab] = useState<HomeTab>('summary')
   const [unlocked, setUnlocked] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [addingBiz, setAddingBiz] = useState(false)
   // Amounts start hidden every time the app opens, so nobody nearby sees them.
   const [hidden, setHidden] = useState(true)
   const [askPin, setAskPin] = useState(false)
@@ -79,7 +81,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         {brand}
         <nav className="nav">
           <div className="navGroup">🏪 Shop / Business</div>
-          {BIZ_TABS.map((t) => (
+          {bizTabs(settings).map((t) => (
             <button
               key={t.id}
               className={`navItem ${section === 'biz' && bizTab === t.id ? 'active' : ''}`}
@@ -92,6 +94,10 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
               {t.label}
             </button>
           ))}
+          <button className="navItem navAdd" onClick={() => setAddingBiz(true)}>
+            <span className="navIc">＋</span>
+            Add category
+          </button>
           <div className="navGroup">
             🔒 Home Accounts
             {unlocked && (
@@ -184,6 +190,18 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             />
           ))}
       </main>
+
+      {addingBiz && (
+        <AddBizSheet
+          uid={uid}
+          existing={settings.customBiz ?? []}
+          onClose={() => setAddingBiz(false)}
+          onAdded={(b) => {
+            setSection('biz')
+            setBizTab(`c:${b.name}`)
+          }}
+        />
+      )}
 
       {askPin && (
         <div

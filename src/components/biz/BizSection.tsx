@@ -11,19 +11,28 @@ import { KIND_ICON, KIND_LABEL, KIND_SHORT, WALLET_LABEL, entrySub, entryTitle, 
 import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
 import { InvestTab } from './InvestTab'
+import { AddBizSheet } from './AddBizSheet'
 
-export type BizTab = 'dash' | BizKind | 'invest'
-export const BIZ_TABS: { id: BizTab; label: string; icon: string }[] = [
+/** Built-in pages, a page per user-added category (`c:<name>`), then Investment. */
+export type BizTab = 'dash' | Exclude<BizKind, 'custom'> | 'invest' | `c:${string}`
+const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'dash', label: 'Dashboard', icon: '📊' },
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
   { id: 'load', label: 'Load', icon: '📶' },
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
   { id: 'acc', label: 'Accessories', icon: '🎧' },
   { id: 'online', label: 'Online services', icon: '🪪' },
-  { id: 'invest', label: 'Investment', icon: '🏦' },
 ]
 
-const KINDS: BizKind[] = ['wallet', 'load', 'copy', 'acc', 'online']
+export function bizTabs(settings: Settings): { id: BizTab; label: string; icon: string }[] {
+  return [
+    ...BASE_TABS,
+    ...(settings.customBiz ?? []).map((c) => ({ id: `c:${c.name}` as BizTab, label: c.name, icon: c.icon })),
+    { id: 'invest', label: 'Investment', icon: '🏦' },
+  ]
+}
+
+const KINDS: Exclude<BizKind, 'custom'>[] = ['wallet', 'load', 'copy', 'acc', 'online']
 
 const timeOf = (ms: number) => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
@@ -41,7 +50,13 @@ export function BizSection({
   setTab: (t: BizTab) => void
 }) {
   const [period, setPeriod] = useState<Period>({ mode: 'day', date: today() })
-  const [adding, setAdding] = useState<BizKind | null>(null)
+  const [adding, setAddingState] = useState<{ kind: BizKind; biz?: string } | null>(null)
+  const setAdding = (kind: BizKind | null, biz?: string) => setAddingState(kind ? { kind, biz } : null)
+  const [addingBiz, setAddingBiz] = useState(false)
+  const customs = settings.customBiz ?? []
+  const tabs = bizTabs(settings)
+  const customIcon = (name?: string) => customs.find((c) => c.name === name)?.icon ?? KIND_ICON.custom
+  const customTab = tab.startsWith('c:') ? tab.slice(2) : null
   const [deleting, setDeleting] = useState<BizEntry | null>(null)
   const [editOpening, setEditOpening] = useState(false)
 
@@ -65,7 +80,7 @@ export function BizSection({
   const rowFor = (e: BizEntry) => (
     <Row
       key={e.id}
-      icon={KIND_ICON[e.kind]}
+      icon={e.kind === 'custom' ? customIcon(e.biz) : KIND_ICON[e.kind]}
       title={entryTitle(e)}
       sub={entrySub(e)}
       amount={rs(e.amount)}
@@ -93,10 +108,10 @@ export function BizSection({
   return (
     <>
       <div className="mobileOnly">
-        <Tabs tabs={BIZ_TABS} value={tab} onChange={setTab} />
+        <Tabs tabs={tabs} value={tab} onChange={setTab} />
       </div>
       <div className="pageHead">
-        <h1 className="pageTitle desktopOnly">{BIZ_TABS.find((t) => t.id === tab)?.label}</h1>
+        <h1 className="pageTitle desktopOnly">{tabs.find((t) => t.id === tab)?.label}</h1>
         {tab !== 'invest' && <PeriodBar period={period} onChange={setPeriod} />}
       </div>
       {tab === 'invest' && <InvestTab uid={uid} />}
@@ -137,11 +152,11 @@ export function BizSection({
           )}
           <Card title="Quick add">
             <QuickActions
-              items={KINDS.map((k) => ({
-                icon: KIND_ICON[k],
-                label: KIND_LABEL[k],
-                onClick: () => setAdding(k),
-              }))}
+              items={[
+                ...KINDS.map((k) => ({ icon: KIND_ICON[k], label: KIND_LABEL[k], onClick: () => setAdding(k) })),
+                ...customs.map((c) => ({ icon: c.icon, label: c.name, onClick: () => setAdding('custom', c.name) })),
+                { icon: '＋', label: 'New category', hint: 'Add your own business', onClick: () => setAddingBiz(true) },
+              ]}
             />
           </Card>
           <div className="dashGrid">
@@ -151,7 +166,11 @@ export function BizSection({
             <Card title="Profit by business">
               <Donut
                 centerLabel="Total profit"
-                slices={KINDS.map((k, i) => ({ label: KIND_SHORT[k], value: profitOf(k), color: `var(--series-${i + 1})` }))}
+                slices={[
+                  ...KINDS.map((k, i) => ({ label: KIND_SHORT[k], value: profitOf(k), color: `var(--series-${i + 1})` })),
+                  // Past five categories, user-added businesses fold into one neutral "Other" slice.
+                  ...(customs.length ? [{ label: 'Other', value: profitOf('custom'), color: 'var(--muted)' }] : []),
+                ]}
               />
             </Card>
           </div>
@@ -167,6 +186,20 @@ export function BizSection({
                 onClick={() => setTab(k)}
               />
             ))}
+            {customs.map((c) => {
+              const list = of('custom').filter((e) => e.biz === c.name)
+              return (
+                <Stat
+                  key={c.name}
+                  icon={c.icon}
+                  label={c.name}
+                  value={sum(list, (e) => e.profit)}
+                  tone="in"
+                  hint={`${list.length} entries ›`}
+                  onClick={() => setTab(`c:${c.name}`)}
+                />
+              )
+            })}
           </StatGrid>
           <Card title={isDay ? 'Entries for the day' : 'Entries this month'}>
             <List empty="No entries yet. Tap “+ New entry” to add one.">{entries.map(rowFor)}</List>
@@ -281,6 +314,25 @@ export function BizSection({
         </>
       )}
 
+      {customTab !== null &&
+        (() => {
+          const list = of('custom').filter((e) => e.biz === customTab)
+          return (
+            <>
+              <Hero label={`${customTab} profit`} value={sum(list, (e) => e.profit)}>
+                <HeroStat label="Total received" value={sum(list, (e) => e.amount)} />
+                <HeroStat label="Entries" value={String(list.length)} />
+              </Hero>
+              <Card title="By item">
+                <Breakdown rows={groupSum(list, (e) => e.item || 'Other', (e) => e.amount)} tone="in" />
+              </Card>
+              <Card title="Entries">
+                <List empty="No entries yet. Tap “+ New entry”.">{list.map(rowFor)}</List>
+              </Card>
+            </>
+          )
+        })()}
+
       {tab === 'online' && (
         <>
           <Hero label="Online services profit" value={profitOf('online')}>
@@ -296,12 +348,29 @@ export function BizSection({
         </>
       )}
 
-      {tab !== 'invest' && <Fab label="New entry" onClick={() => setAdding(tab === 'dash' ? 'wallet' : tab)} />}
+      {tab !== 'invest' && (
+        <Fab
+          label="New entry"
+          onClick={() =>
+            customTab !== null ? setAdding('custom', customTab) : setAdding(tab === 'dash' || tab.startsWith('c:') ? 'wallet' : (tab as BizKind))
+          }
+        />
+      )}
+      {addingBiz && (
+        <AddBizSheet
+          uid={uid}
+          existing={customs}
+          onClose={() => setAddingBiz(false)}
+          onAdded={(b) => setTab(`c:${b.name}`)}
+        />
+      )}
 
       {adding && (
         <BizForm
           uid={uid}
-          initialKind={adding}
+          initialKind={adding.kind}
+          initialBiz={adding.biz}
+          customs={customs}
           date={newDate}
           rates={settings.rates}
           networks={allNetworks(settings.networks)}

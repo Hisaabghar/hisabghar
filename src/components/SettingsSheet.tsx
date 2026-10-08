@@ -134,6 +134,28 @@ export function SettingsSheet({
         </div>
       )}
 
+      {(settings.customBiz ?? []).length > 0 && (
+        <div className="settingsGroup">
+          <div className="settingsHead">Your business categories</div>
+          <div className="netList">
+            {(settings.customBiz ?? []).map((b) => (
+              <span key={b.name} className="netChip custom">
+                {b.icon} {b.name}
+                <button
+                  aria-label={`Remove ${b.name}`}
+                  onClick={() => {
+                    if (confirm(`Remove "${b.name}" from the menu? Its saved entries are kept.`))
+                      mergeDoc(settingsDoc(uid), { customBiz: arrayRemove(b) })
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="settingsGroup">
         <div className="settingsHead">Load networks</div>
         <div className="netList">

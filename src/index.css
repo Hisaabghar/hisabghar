@@ -1900,3 +1900,34 @@ button {
   background: var(--out-soft);
   color: var(--out-text);
 }
+
+/* ---------- Custom business ---------- */
+.kindPick.add {
+  border-style: dashed;
+  color: var(--brand-2);
+}
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+.iconPick {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+}
+.iconPick.active {
+  border-color: var(--brand-2);
+  background: rgba(20, 184, 166, 0.14);
+}
+
+.navAdd {
+  color: var(--brand-2);
+}
+.navAdd .navIc {
+  border: 1px dashed var(--brand-2);
+  background: transparent;
+}

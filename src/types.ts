@@ -32,7 +32,7 @@ export interface LoanEntry {
 }
 
 // ---------- Shop / business ----------
-export type BizKind = 'wallet' | 'load' | 'copy' | 'acc' | 'online'
+export type BizKind = 'wallet' | 'load' | 'copy' | 'acc' | 'online' | 'custom'
 export type Wallet = 'easypaisa' | 'jazzcash'
 
 export interface BizEntry {
@@ -57,6 +57,8 @@ export interface BizEntry {
   // accessories
   item?: string
   cost?: number
+  // user-defined business (kind 'custom')
+  biz?: string
   // online kaam
   service?: string
   customer?: string
@@ -80,7 +82,14 @@ export interface DayOpening {
   jazzcash: number
 }
 
+/** A business category the user added (e.g. Tea stall, Bike repair). */
+export interface CustomBiz {
+  name: string
+  icon: string
+}
+
 export interface Settings {
+  customBiz?: CustomBiz[]
   pinHash?: string
   businessName?: string
   /** Extra load networks the user added on top of the built-in ones. */

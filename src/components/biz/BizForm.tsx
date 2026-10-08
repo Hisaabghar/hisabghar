@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { BizEntry, BizKind, Wallet } from '../../types'
+import type { BizEntry, BizKind, CustomBiz, Wallet } from '../../types'
 import { bizCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
 import { rsRaw } from '../../lib/format'
@@ -7,6 +7,7 @@ import { arrayUnion } from 'firebase/firestore'
 import { COPY_TYPES, ONLINE_SERVICES } from '../../lib/catalog'
 import { Chips, Field, FormSheet, MoneyInput, Segmented, num } from '../ui/kit'
 import { KIND_ICON, KIND_LABEL } from './bizMeta'
+import { AddBizSheet } from './AddBizSheet'
 
 type Draft = Omit<BizEntry, 'id' | 'createdAt'>
 
@@ -16,9 +17,13 @@ export function BizForm({
   date: initialDate,
   rates,
   networks,
+  customs,
+  initialBiz,
   onClose,
 }: {
   networks: string[]
+  customs: CustomBiz[]
+  initialBiz?: string
   uid: string
   initialKind: BizKind
   date: string
@@ -26,6 +31,8 @@ export function BizForm({
   onClose: () => void
 }) {
   const [kind, setKind] = useState<BizKind>(initialKind)
+  const [biz, setBiz] = useState(initialBiz ?? customs[0]?.name ?? '')
+  const [addingBiz, setAddingBiz] = useState(false)
   const [date, setDate] = useState(initialDate)
   const [note, setNote] = useState('')
   const [amount, setAmount] = useState('')
@@ -66,6 +73,8 @@ export function BizForm({
       amount: q * num(amount),
       profit: q * (num(amount) - num(cost)),
     }
+  if (kind === 'custom' && biz && num(amount) > 0)
+    draft = { kind, date, note, biz, item: item.trim(), cost: num(cost), amount: num(amount), profit: num(amount) - num(cost) }
   if (kind === 'online' && num(amount) > 0)
     draft = {
       kind,
@@ -87,13 +96,66 @@ export function BizForm({
       onSave={() => addItem(bizCol(uid), { ...draft!, note: note.trim() })}
     >
       <div className="kindPicker">
-        {(Object.keys(KIND_LABEL) as BizKind[]).map((k) => (
-          <button key={k} type="button" className={`kindPick ${k === kind ? 'active' : ''}`} onClick={() => setKind(k)}>
-            <span>{KIND_ICON[k]}</span>
-            {KIND_LABEL[k]}
+        {(Object.keys(KIND_LABEL) as BizKind[])
+          .filter((k) => k !== 'custom')
+          .map((k) => (
+            <button key={k} type="button" className={`kindPick ${k === kind ? 'active' : ''}`} onClick={() => setKind(k)}>
+              <span>{KIND_ICON[k]}</span>
+              {KIND_LABEL[k]}
+            </button>
+          ))}
+        {customs.map((c) => (
+          <button
+            key={c.name}
+            type="button"
+            className={`kindPick ${kind === 'custom' && biz === c.name ? 'active' : ''}`}
+            onClick={() => {
+              setKind('custom')
+              setBiz(c.name)
+            }}
+          >
+            <span>{c.icon}</span>
+            {c.name}
           </button>
         ))}
+        <button type="button" className="kindPick add" onClick={() => setAddingBiz(true)}>
+          <span>＋</span>
+          New category
+        </button>
       </div>
+      {addingBiz && (
+        <AddBizSheet
+          uid={uid}
+          existing={customs}
+          onClose={() => setAddingBiz(false)}
+          onAdded={(b) => {
+            setKind('custom')
+            setBiz(b.name)
+          }}
+        />
+      )}
+
+      {kind === 'custom' && (
+        <>
+          <Field label="What did you sell / do?">
+            <input value={item} onChange={(e) => setItem(e.target.value)} placeholder="e.g. 3 cups of tea, puncture repair" autoFocus />
+          </Field>
+          <div className="twoFields">
+            <Field label="Amount received (Rs)">
+              <MoneyInput value={amount} onChange={setAmount} />
+            </Field>
+            <Field label="Cost (Rs, optional)">
+              <MoneyInput value={cost} onChange={setCost} />
+            </Field>
+          </div>
+          <Field label="Note (optional)">
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Customer, phone…" />
+          </Field>
+          <div className="totalLine">
+            Profit: <b>{rsRaw(num(amount) - num(cost))}</b>
+          </div>
+        </>
+      )}
 
       {kind === 'wallet' && (
         <>

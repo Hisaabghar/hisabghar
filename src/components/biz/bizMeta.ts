@@ -7,6 +7,7 @@ export const KIND_LABEL: Record<BizKind, string> = {
   copy: 'Photocopy / Print',
   acc: 'Mobile accessories',
   online: 'Online services',
+  custom: 'Other business',
 }
 /** Short names for tight spots such as chart legends. */
 export const KIND_SHORT: Record<BizKind, string> = {
@@ -15,8 +16,11 @@ export const KIND_SHORT: Record<BizKind, string> = {
   copy: 'Photocopy',
   acc: 'Accessories',
   online: 'Online',
+  custom: 'Other',
 }
-export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '🪪' }
+export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '🪪', custom: '🧩' }
+
+export const BIZ_ICONS = ['🧩', '🍵', '🔧', '🧵', '💇', '🍔', '🛒', '🚲', '📚', '🎂', '🧴', '📦', '💻', '🧹', '🚚', '🌾']
 
 export const WALLET_LABEL = { easypaisa: 'Easypaisa', jazzcash: 'JazzCash' } as const
 
@@ -32,6 +36,8 @@ export function entryTitle(e: BizEntry): string {
       return `${e.item}${e.qty && e.qty > 1 ? ` × ${e.qty}` : ''}`
     case 'online':
       return e.service ?? 'Online service'
+    case 'custom':
+      return `${e.biz ?? 'Business'}${e.item ? ' — ' + e.item : ''}`
   }
 }
 
