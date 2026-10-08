@@ -52,6 +52,17 @@ export const INVEST_ICONS: Record<string, string> = {
 }
 
 export const NETWORKS = ['Jazz', 'Zong', 'Telenor', 'Ufone', 'Onic']
+/** Built-in networks plus the user's own, without duplicates. */
+export function allNetworks(extra: string[] = []) {
+  const seen = new Set<string>()
+  return [...NETWORKS, ...extra].filter((n) => {
+    const k = n.trim().toLowerCase()
+    if (!k || seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
 export const NETWORK_COLORS: Record<string, string> = {
   Jazz: '#e11d48',
   Zong: '#16a34a',

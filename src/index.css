@@ -1753,3 +1753,60 @@ button {
   font-size: 13.5px;
   color: var(--text-2);
 }
+
+/* ---------- Networks ---------- */
+.inlineAdd {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.inlineAdd input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 15px;
+  font-family: var(--font);
+}
+.inlineAdd input:focus {
+  outline: none;
+  border-color: var(--brand-2);
+}
+.inlineAdd .btnPrimary {
+  flex: 0 0 auto;
+  padding: 11px 20px;
+}
+.netList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.netChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+}
+.netChip.custom {
+  border-color: var(--brand-2);
+  color: var(--text);
+}
+.netChip button {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}

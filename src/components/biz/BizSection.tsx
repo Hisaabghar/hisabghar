@@ -5,7 +5,7 @@ import { byDateRange, patchItem, removeItem, useLiveDoc, useLiveQuery } from '..
 import { addDays, dailySeries, groupSum, periodRange, rs, shiftPeriod, shortDate, sum, today } from '../../lib/format'
 import { Donut } from '../ui/Donut'
 import { BarChart } from '../ui/BarChart'
-import { COPY_TYPES, NETWORKS, NETWORK_COLORS } from '../../lib/catalog'
+import { COPY_TYPES, NETWORK_COLORS, allNetworks } from '../../lib/catalog'
 import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, QuickActions, Row, Stat, StatGrid, Tabs } from '../ui/kit'
 import { KIND_ICON, KIND_LABEL, KIND_SHORT, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
 import { BizForm } from './BizForm'
@@ -223,7 +223,7 @@ export function BizSection({
             <HeroStat label="Total load" value={sum(of('load'), (e) => e.amount)} />
           </Hero>
           <StatGrid>
-            {NETWORKS.map((n) => {
+            {allNetworks([...(settings.networks ?? []), ...of('load').map((e) => e.network ?? '')]).map((n) => {
               const list = of('load').filter((e) => e.network === n)
               return (
                 <Stat
@@ -231,7 +231,7 @@ export function BizSection({
                   label={n}
                   value={sum(list, (e) => e.amount)}
                   hint={`Profit ${rs(sum(list, (e) => e.profit))}`}
-                  accent={NETWORK_COLORS[n]}
+                  accent={NETWORK_COLORS[n] ?? '#64748b'}
                 />
               )
             })}
@@ -299,7 +299,14 @@ export function BizSection({
       {tab !== 'invest' && <Fab label="New entry" onClick={() => setAdding(tab === 'dash' ? 'wallet' : tab)} />}
 
       {adding && (
-        <BizForm uid={uid} initialKind={adding} date={newDate} rates={settings.rates} onClose={() => setAdding(null)} />
+        <BizForm
+          uid={uid}
+          initialKind={adding}
+          date={newDate}
+          rates={settings.rates}
+          networks={allNetworks(settings.networks)}
+          onClose={() => setAdding(null)}
+        />
       )}
       {editOpening && (
         <OpeningForm uid={uid} date={period.date} current={open ?? ZERO} onClose={() => setEditOpening(false)} />

@@ -75,5 +75,7 @@ export interface DayOpening {
 export interface Settings {
   pinHash?: string
   businessName?: string
+  /** Extra load networks the user added on top of the built-in ones. */
+  networks?: string[]
   rates: Record<string, number>
 }

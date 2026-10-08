@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { deleteField } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, deleteField } from 'firebase/firestore'
 import type { Settings } from '../types'
 import { settingsDoc } from '../lib/paths'
 import { mergeDoc } from '../hooks/useData'
-import { COPY_TYPES } from '../lib/catalog'
+import { COPY_TYPES, NETWORKS } from '../lib/catalog'
 import { sha256 } from '../lib/format'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
@@ -28,6 +28,7 @@ export function SettingsSheet({
   )
   const [bizName, setBizName] = useState(settings.businessName ?? '')
   const [oldPin, setOldPin] = useState('')
+  const [net, setNet] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -68,6 +69,42 @@ export function SettingsSheet({
         <button className="btnPrimary full" disabled={busy} onClick={saveName}>
           Save name
         </button>
+      </div>
+
+      <div className="settingsGroup">
+        <div className="settingsHead">Load networks</div>
+        <div className="netList">
+          {NETWORKS.map((n) => (
+            <span key={n} className="netChip">
+              {n}
+            </span>
+          ))}
+          {(settings.networks ?? []).map((n) => (
+            <span key={n} className="netChip custom">
+              {n}
+              <button
+                aria-label={`Remove ${n}`}
+                onClick={() => mergeDoc(settingsDoc(uid), { networks: arrayRemove(n) })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="inlineAdd">
+          <input value={net} onChange={(e) => setNet(e.target.value)} placeholder="Add a network, e.g. SCOM" maxLength={20} />
+          <button
+            className="btnPrimary"
+            disabled={!net.trim()}
+            onClick={async () => {
+              await mergeDoc(settingsDoc(uid), { networks: arrayUnion(net.trim()) })
+              setNet('')
+              setMsg('Network added ✓')
+            }}
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       <div className="settingsGroup">

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { BizEntry, BizKind, Wallet } from '../../types'
-import { bizCol } from '../../lib/paths'
-import { addItem } from '../../hooks/useData'
+import { bizCol, settingsDoc } from '../../lib/paths'
+import { addItem, mergeDoc } from '../../hooks/useData'
 import { rs } from '../../lib/format'
-import { COPY_TYPES, NETWORKS, ONLINE_SERVICES } from '../../lib/catalog'
+import { arrayUnion } from 'firebase/firestore'
+import { COPY_TYPES, ONLINE_SERVICES } from '../../lib/catalog'
 import { Chips, Field, FormSheet, MoneyInput, Segmented, num } from '../ui/kit'
 import { KIND_ICON, KIND_LABEL } from './bizMeta'
 
@@ -14,8 +15,10 @@ export function BizForm({
   initialKind,
   date: initialDate,
   rates,
+  networks,
   onClose,
 }: {
+  networks: string[]
   uid: string
   initialKind: BizKind
   date: string
@@ -31,7 +34,8 @@ export function BizForm({
   const [wallet, setWallet] = useState<Wallet>('easypaisa')
   const [dir, setDir] = useState<'send' | 'withdraw'>('send')
   // load
-  const [network, setNetwork] = useState(NETWORKS[0])
+  const [network, setNetwork] = useState(networks[0])
+  const [newNet, setNewNet] = useState<string | null>(null)
   // copy
   const [copyType, setCopyType] = useState(COPY_TYPES[0])
   const [qty, setQty] = useState('1')
@@ -127,7 +131,35 @@ export function BizForm({
       {kind === 'load' && (
         <>
           <Field label="Network">
-            <Chips options={NETWORKS} value={network} onChange={setNetwork} />
+            <Chips
+              options={[...networks, '+ Add network']}
+              value={newNet !== null ? '+ Add network' : network}
+              onChange={(n) => (n === '+ Add network' ? setNewNet('') : (setNewNet(null), setNetwork(n)))}
+            />
+            {newNet !== null && (
+              <div className="inlineAdd">
+                <input
+                  autoFocus
+                  value={newNet}
+                  onChange={(e) => setNewNet(e.target.value)}
+                  placeholder="Network name, e.g. SCOM"
+                  maxLength={20}
+                />
+                <button
+                  type="button"
+                  className="btnPrimary"
+                  disabled={!newNet.trim()}
+                  onClick={async () => {
+                    const name = newNet.trim()
+                    await mergeDoc(settingsDoc(uid), { networks: arrayUnion(name) })
+                    setNetwork(name)
+                    setNewNet(null)
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            )}
           </Field>
           <div className="twoFields">
             <Field label="Load amount (Rs)">
