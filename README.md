@@ -36,6 +36,9 @@ and [`storage.rules`](storage.rules) restrict each user to their own data.
 
 ## Deploy to Firebase Hosting
 
+On Firebase Hosting no `.env` is needed: the app reads its config from
+`/__/firebase/init.json`, which Hosting serves for the project's registered web app.
+
 ```bash
 npm install -g firebase-tools
 firebase login
