@@ -6,7 +6,7 @@ export const KIND_LABEL: Record<BizKind, string> = {
   load: 'Load',
   copy: 'Photocopy / Print',
   acc: 'Mobile accessories',
-  online: 'Online kaam',
+  online: 'Online services',
 }
 export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '🪪' }
 
@@ -15,7 +15,7 @@ export const WALLET_LABEL = { easypaisa: 'Easypaisa', jazzcash: 'JazzCash' } as 
 export function entryTitle(e: BizEntry): string {
   switch (e.kind) {
     case 'wallet':
-      return `${WALLET_LABEL[e.wallet ?? 'easypaisa']} — ${e.dir === 'withdraw' ? 'Nikala' : 'Bheja'}`
+      return `${WALLET_LABEL[e.wallet ?? 'easypaisa']} — ${e.dir === 'withdraw' ? 'Withdrawal' : 'Sent'}`
     case 'load':
       return `${e.network} load`
     case 'copy':
@@ -23,7 +23,7 @@ export function entryTitle(e: BizEntry): string {
     case 'acc':
       return `${e.item}${e.qty && e.qty > 1 ? ` × ${e.qty}` : ''}`
     case 'online':
-      return e.service ?? 'Online kaam'
+      return e.service ?? 'Online service'
   }
 }
 

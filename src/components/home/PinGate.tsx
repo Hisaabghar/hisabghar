@@ -17,8 +17,8 @@ export function PinGate({
   const [error, setError] = useState<string | null>(null)
   const [shake, setShake] = useState(false)
 
-  const title = creating ? (first ? 'PIN dobara likhein' : 'Naya PIN banayein') : 'PIN likhein'
-  const hint = creating ? '4 se 6 number. Ghar ka hisab sirf is PIN se khulega.' : 'Ghar ka hisab locked hai'
+  const title = creating ? (first ? 'Confirm your PIN' : 'Create a PIN') : 'Enter PIN'
+  const hint = creating ? '4 to 6 digits. Home Accounts will only open with this PIN.' : 'Home Accounts are locked'
 
   function fail(msg: string) {
     setError(msg)
@@ -28,7 +28,7 @@ export function PinGate({
   }
 
   async function submit(value: string) {
-    if (value.length < 4) return fail('Kam az kam 4 number')
+    if (value.length < 4) return fail('Use at least 4 digits')
     if (creating) {
       if (!first) {
         setFirst(value)
@@ -38,14 +38,14 @@ export function PinGate({
       }
       if (value !== first) {
         setFirst(null)
-        return fail('Dono PIN match nahi hue, dobara koshish karein')
+        return fail("PINs didn't match, try again")
       }
       await onCreate(await sha256(value))
       onUnlock()
       return
     }
     if ((await sha256(value)) === pinHash) onUnlock()
-    else fail('Galat PIN')
+    else fail('Wrong PIN')
   }
 
   function press(k: string) {

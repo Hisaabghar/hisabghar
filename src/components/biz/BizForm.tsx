@@ -77,7 +77,7 @@ export function BizForm({
 
   return (
     <FormSheet
-      title="Nayi entry"
+      title="New entry"
       onClose={onClose}
       canSave={!!draft}
       onSave={() => addItem(bizCol(uid), { ...draft!, note: note.trim() })}
@@ -104,21 +104,21 @@ export function BizForm({
           <div className="gap" />
           <Segmented
             options={[
-              { id: 'send', label: 'Bheja / Deposit' },
-              { id: 'withdraw', label: 'Nikala / Withdraw' },
+              { id: 'send', label: 'Send / Deposit' },
+              { id: 'withdraw', label: 'Withdraw' },
             ]}
             value={dir}
             onChange={setDir}
           />
           <div className="twoFields">
-            <Field label="Raqam (Rs)">
+            <Field label="Amount (Rs)">
               <MoneyInput value={amount} onChange={setAmount} autoFocus />
             </Field>
             <Field label="Commission (Rs)">
               <MoneyInput value={profit} onChange={setProfit} />
             </Field>
           </div>
-          <Field label="Number / Naam (optional)">
+          <Field label="Number / Name (optional)">
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="03xx-xxxxxxx" />
           </Field>
         </>
@@ -130,7 +130,7 @@ export function BizForm({
             <Chips options={NETWORKS} value={network} onChange={setNetwork} />
           </Field>
           <div className="twoFields">
-            <Field label="Load (Rs)">
+            <Field label="Load amount (Rs)">
               <MoneyInput value={amount} onChange={setAmount} autoFocus />
             </Field>
             <Field label="Profit (Rs)">
@@ -145,7 +145,7 @@ export function BizForm({
 
       {kind === 'copy' && (
         <>
-          <Field label="Kya kiya">
+          <Field label="Type">
             <Chips
               options={COPY_TYPES}
               value={copyType}
@@ -156,7 +156,7 @@ export function BizForm({
             />
           </Field>
           <div className="twoFields">
-            <Field label="Kitne pages">
+            <Field label="Pages">
               <MoneyInput value={qty} onChange={setQty} autoFocus placeholder="1" />
             </Field>
             <Field label="Rate (Rs)">
@@ -164,25 +164,25 @@ export function BizForm({
             </Field>
           </div>
           <div className="totalLine">
-            Kul: <b>{rs(q * num(rate))}</b>
+            Total: <b>{rs(q * num(rate))}</b>
           </div>
         </>
       )}
 
       {kind === 'acc' && (
         <>
-          <Field label="Cheez ka naam">
-            <input value={item} onChange={(e) => setItem(e.target.value)} placeholder="Jaise: Charger, Handsfree, Cover" autoFocus />
+          <Field label="Item">
+            <input value={item} onChange={(e) => setItem(e.target.value)} placeholder="e.g. Charger, Handsfree, Cover" autoFocus />
           </Field>
           <div className="twoFields">
-            <Field label="Kitne">
+            <Field label="Quantity">
               <MoneyInput value={qty} onChange={setQty} placeholder="1" />
             </Field>
-            <Field label="Becha (1 ka)">
+            <Field label="Sale price (each)">
               <MoneyInput value={amount} onChange={setAmount} />
             </Field>
           </div>
-          <Field label="Khareed (1 ki) — profit ke liye">
+          <Field label="Cost price (each) — for profit">
             <MoneyInput value={cost} onChange={setCost} />
           </Field>
           <div className="totalLine">
@@ -193,33 +193,33 @@ export function BizForm({
 
       {kind === 'online' && (
         <>
-          <Field label="Kaam">
+          <Field label="Service">
             <select value={service} onChange={(e) => setService(e.target.value)}>
               {ONLINE_SERVICES.map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>
           </Field>
-          <Field label="Customer ka naam">
-            <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Naam" />
+          <Field label="Customer name">
+            <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Name" />
           </Field>
           <div className="twoFields">
-            <Field label="Fees li (Rs)">
+            <Field label="Fee charged (Rs)">
               <MoneyInput value={amount} onChange={setAmount} />
             </Field>
-            <Field label="Kharcha / Challan (Rs)">
+            <Field label="Cost / Challan (Rs)">
               <MoneyInput value={cost} onChange={setCost} />
             </Field>
           </div>
           <Segmented
             options={[
-              { id: 'done', label: 'Ho gaya ✓' },
+              { id: 'done', label: 'Done ✓' },
               { id: 'pending', label: 'Pending' },
             ]}
             value={status}
             onChange={setStatus}
           />
-          <Field label="Phone / Detail (optional)">
+          <Field label="Phone / Note (optional)">
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="03xx-xxxxxxx, tracking no." />
           </Field>
           <div className="totalLine">
@@ -228,7 +228,7 @@ export function BizForm({
         </>
       )}
 
-      <Field label="Tareekh">
+      <Field label="Date">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </Field>
     </FormSheet>

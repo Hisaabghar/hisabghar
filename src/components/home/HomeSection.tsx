@@ -5,6 +5,7 @@ import { addItem, allByDate, removeItem, useLiveQuery } from '../../hooks/useDat
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME, ICONS } from '../../lib/catalog'
 import {
+  QuickActions,
   Breakdown,
   Card,
   Chips,
@@ -29,9 +30,9 @@ import { BarChart } from '../ui/BarChart'
 
 export type HomeTab = 'summary' | 'entries' | 'udhaar'
 export const HOME_TABS: { id: HomeTab; label: string; icon: string }[] = [
-  { id: 'summary', label: 'Khulasa', icon: '📈' },
-  { id: 'entries', label: 'Aamdani / Kharcha', icon: '🧾' },
-  { id: 'udhaar', label: 'Udhaar', icon: '🤝' },
+  { id: 'summary', label: 'Overview', icon: '📈' },
+  { id: 'entries', label: 'Income & Expenses', icon: '🧾' },
+  { id: 'udhaar', label: 'Loans', icon: '🤝' },
 ]
 
 const byNewest = (a: { date: string; createdAt: number }, b: { date: string; createdAt: number }) =>
@@ -73,7 +74,7 @@ export function HomeSection({
     <>
       <div className="sectionHead mobileOnly">
         <Tabs tabs={HOME_TABS} value={tab} onChange={setTab} />
-        <button className="lockBtn" onClick={onLock} title="Lock karein">
+        <button className="lockBtn" onClick={onLock} title="Lock">
           🔒 Lock
         </button>
       </div>
@@ -85,21 +86,30 @@ export function HomeSection({
 
       {tab === 'summary' && (
         <>
-          <Hero label={period.mode === 'month' ? 'Is mahine ke aakhir mein bacha' : 'Din ke aakhir mein bacha'} value={closing}>
-            <HeroStat label="Shuru mein the" value={opening} />
-            <HeroStat label="Aaye" value={incomeSum} />
-            <HeroStat label="Kharch hue" value={expenseSum} />
+          <Hero label={period.mode === 'month' ? 'Balance at end of month' : 'Balance at end of day'} value={closing}>
+            <HeroStat label="Opening balance" value={opening} />
+            <HeroStat label="Money in" value={incomeSum} />
+            <HeroStat label="Spent" value={expenseSum} />
           </Hero>
+          <Card title="Quick add">
+            <QuickActions
+              items={[
+                { icon: '💼', label: 'Add income', hint: 'Salary, earnings…', onClick: () => setAdding('income') },
+                { icon: '🧾', label: 'Add expense', hint: 'Fuel, friends, bills…', onClick: () => setAdding('expense') },
+                { icon: '🤝', label: 'Loans', hint: 'Lent or borrowed', onClick: () => setTab('udhaar') },
+              ]}
+            />
+          </Card>
           {period.mode === 'month' && (
-            <Card title="Roz ka kharcha">
+            <Card title="Daily spending">
               <BarChart data={dailySeries(expense, range[0], range[1], (e) => e.amount)} tone="out" />
             </Card>
           )}
           <div className="twoCol">
-            <Card title="Kahan kharch hua">
+            <Card title="Where the money went">
               <Breakdown rows={groupSum(expense, (e) => e.category, (e) => e.amount)} tone="out" />
             </Card>
-            <Card title="Paise kahan se aaye">
+            <Card title="Where the money came from">
               <Breakdown rows={groupSum(income, (e) => e.category, (e) => e.amount)} tone="in" />
             </Card>
           </div>
@@ -110,20 +120,20 @@ export function HomeSection({
       {tab === 'entries' && (
         <>
           <StatGrid>
-            <Stat label="Aamdani" value={incomeSum} tone="in" />
-            <Stat label="Kharcha" value={expenseSum} tone="out" />
-            <Stat label="Farq" value={incomeSum - expenseSum} tone={incomeSum - expenseSum < 0 ? 'out' : 'in'} />
+            <Stat label="Income" value={incomeSum} tone="in" />
+            <Stat label="Expenses" value={expenseSum} tone="out" />
+            <Stat label="Net" value={incomeSum - expenseSum} tone={incomeSum - expenseSum < 0 ? 'out' : 'in'} />
           </StatGrid>
           <div className="quickAdd">
             <button className="quickBtn" onClick={() => setAdding('income')}>
-              <span className="qIc">+</span> Aamdani
+              <span className="qIc">+</span> Add income
             </button>
             <button className="quickBtn secondary" onClick={() => setAdding('expense')}>
-              <span className="qIc">−</span> Kharcha
+              <span className="qIc">−</span> Add expense
             </button>
           </div>
           <Card>
-            <List empty="Is waqt mein koi entry nahi">
+            <List empty="No entries for this period. Use “Add income” or “Add expense” above.">
               {inPeriod.map((e) => (
                 <Row
                   key={e.id}
@@ -143,7 +153,7 @@ export function HomeSection({
 
       {tab === 'udhaar' && <LoansTab uid={uid} loans={loans.items} />}
 
-      {tab !== 'udhaar' && <Fab label="Kharcha" onClick={() => setAdding('expense')} />}
+      {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
       {adding && <HomeForm uid={uid} initialType={adding} onClose={() => setAdding(null)} />}
       {deleting && (
@@ -167,8 +177,8 @@ function UdhaarSnapshot({ loans, onOpen }: { loans: LoanEntry[]; onOpen: () => v
   const dena = -sum([...net.values()].filter((v) => v < 0), (v) => v)
   return (
     <StatGrid>
-      <Stat label="Logon se lena hai" value={lena} tone="in" onClick={onOpen} hint="Udhaar dekhein ›" />
-      <Stat label="Logon ko dena hai" value={dena} tone="out" onClick={onOpen} hint="Udhaar dekhein ›" />
+      <Stat label="Others owe me" value={lena} tone="in" onClick={onOpen} hint="View loans ›" />
+      <Stat label="I owe others" value={dena} tone="out" onClick={onOpen} hint="View loans ›" />
     </StatGrid>
   )
 }
@@ -183,15 +193,15 @@ function HomeForm({ uid, initialType, onClose }: { uid: string; initialType: Hom
 
   return (
     <FormSheet
-      title={type === 'income' ? 'Aamdani likhein' : 'Kharcha likhein'}
+      title={type === 'income' ? 'Add income' : 'Add expense'}
       onClose={onClose}
       canSave={num(amount) > 0}
       onSave={() => addItem(homeCol(uid), { type, amount: num(amount), category, note: note.trim(), date })}
     >
       <Segmented
         options={[
-          { id: 'income', label: 'Aamdani (+)' },
-          { id: 'expense', label: 'Kharcha (−)' },
+          { id: 'income', label: 'Income (+)' },
+          { id: 'expense', label: 'Expense (−)' },
         ]}
         value={type}
         onChange={(t) => {
@@ -199,16 +209,16 @@ function HomeForm({ uid, initialType, onClose }: { uid: string; initialType: Hom
           setCategory(t === 'income' ? HOME_INCOME[0] : HOME_EXPENSE[0])
         }}
       />
-      <Field label="Raqam (Rs)">
+      <Field label="Amount (Rs)">
         <MoneyInput value={amount} onChange={setAmount} autoFocus />
       </Field>
-      <Field label={type === 'income' ? 'Kahan se aaye' : 'Kis cheez par'}>
+      <Field label={type === 'income' ? 'Source' : 'Category'}>
         <Chips options={cats} value={category} onChange={setCategory} />
       </Field>
-      <Field label="Detail (optional)">
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Jaise: Ali ke sath chai, petrol 2 litre" />
+      <Field label="Note (optional)">
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Tea with Ali, 2 litres petrol" />
       </Field>
-      <Field label="Tareekh">
+      <Field label="Date">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </Field>
     </FormSheet>

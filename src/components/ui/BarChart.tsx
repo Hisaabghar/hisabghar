@@ -16,14 +16,13 @@ export function BarChart({
   const W = 100 / Math.max(1, data.length)
   const labelEvery = Math.ceil(data.length / 8)
   const total = data.reduce((s, d) => s + d.value, 0)
-  if (total === 0) return <div className="empty">Is waqt ka data abhi nahi</div>
   return (
     <div className="chart" onMouseLeave={() => setHover(null)}>
       <div className="chartPlot" style={{ height }}>
         <div className="chartGrid">
           {[1, 0.5, 0].map((f) => (
             <div key={f} className="chartGridLine">
-              <span>{rs(max * f).replace('Rs ', '')}</span>
+              <span>{total === 0 ? '' : rs(max * f).replace('Rs ', '')}</span>
             </div>
           ))}
         </div>
@@ -38,12 +37,13 @@ export function BarChart({
             >
               <div
                 className={`chartBar ${tone} ${hover === i ? 'hot' : ''}`}
-                style={{ height: `${(d.value / max) * 100}%` }}
+                style={{ height: total === 0 ? '3px' : `${(d.value / max) * 100}%` }}
               />
             </div>
           ))}
         </div>
-        {hover !== null && (
+        {total === 0 && <div className="chartEmpty">No data for this period yet</div>}
+        {hover !== null && total > 0 && (
           <div className="chartTip" style={{ left: `${(hover + 0.5) * W}%` }}>
             <div className="chartTipLabel">{data[hover].tip}</div>
             <div className="chartTipVal">{rs(data[hover].value)}</div>

@@ -1,34 +1,34 @@
-export const HOME_INCOME = ['Walid sb ki salary', 'Apni kamai', 'Gift / Eidi', 'Wapas mile', 'Other']
+export const HOME_INCOME = ["Father's salary", 'My earnings', 'Gift / Eidi', 'Money returned', 'Other']
 
 export const HOME_EXPENSE = [
   'Fuel / Bike',
-  'Dost',
-  'Khana / Bahar',
-  'Ghar ka saman',
+  'Friends',
+  'Food / Eating out',
+  'Groceries',
   'Bills',
   'Mobile / Package',
-  'Kapre',
-  'Dawai / Doctor',
-  'Fees / Parhai',
-  'Safar',
+  'Clothes',
+  'Medicine / Doctor',
+  'Fees / Education',
+  'Travel',
   'Other',
 ]
 
 export const ICONS: Record<string, string> = {
-  'Walid sb ki salary': '💼',
-  'Apni kamai': '💰',
+  "Father's salary": '💼',
+  'My earnings': '💰',
   'Gift / Eidi': '🎁',
-  'Wapas mile': '↩️',
+  'Money returned': '↩️',
   'Fuel / Bike': '🏍️',
-  Dost: '🧑‍🤝‍🧑',
-  'Khana / Bahar': '🍔',
-  'Ghar ka saman': '🏠',
+  Friends: '🧑‍🤝‍🧑',
+  'Food / Eating out': '🍔',
+  Groceries: '🛒',
   Bills: '🧾',
   'Mobile / Package': '📱',
-  Kapre: '👕',
-  'Dawai / Doctor': '💊',
-  'Fees / Parhai': '📚',
-  Safar: '🚌',
+  Clothes: '👕',
+  'Medicine / Doctor': '💊',
+  'Fees / Education': '📚',
+  Travel: '🚌',
   Other: '📝',
 }
 
@@ -42,18 +42,18 @@ export const NETWORK_COLORS: Record<string, string> = {
 }
 
 export const COPY_TYPES = [
-  'Sada copy',
+  'B&W copy',
   'Colour copy',
-  'Sada print',
+  'B&W print',
   'Colour print',
   'Lamination',
   'Scan',
   'Photo print',
 ]
 export const DEFAULT_RATES: Record<string, number> = {
-  'Sada copy': 10,
+  'B&W copy': 10,
   'Colour copy': 50,
-  'Sada print': 15,
+  'B&W print': 15,
   'Colour print': 60,
   Lamination: 50,
   Scan: 20,
@@ -76,7 +76,7 @@ export const ONLINE_SERVICES = [
   'Job form',
   'Admission form',
   'Scholarship form',
-  'Bijli / Gas bill',
+  'Electricity / Gas bill',
   'Vehicle token tax',
   'Ehsaas / BISP',
   'Other',

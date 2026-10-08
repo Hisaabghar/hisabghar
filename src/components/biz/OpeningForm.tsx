@@ -20,19 +20,19 @@ export function OpeningForm({
   const [jc, setJc] = useState(current.jazzcash ? String(current.jazzcash) : '')
   return (
     <FormSheet
-      title="Subah ka opening"
+      title="Opening balance"
       onClose={onClose}
       canSave
       onSave={() => mergeDoc(dayDoc(uid, date), { cash: num(cash), easypaisa: num(ep), jazzcash: num(jc) })}
     >
-      <p className="sheetText">Din shuru karte waqt kitne paise the?</p>
-      <Field label="Cash drawer (galle mein)">
+      <p className="sheetText">How much money did you have at the start of the day?</p>
+      <Field label="Cash in drawer">
         <MoneyInput value={cash} onChange={setCash} autoFocus />
       </Field>
-      <Field label="Easypaisa account mein">
+      <Field label="Easypaisa balance">
         <MoneyInput value={ep} onChange={setEp} />
       </Field>
-      <Field label="JazzCash account mein">
+      <Field label="JazzCash balance">
         <MoneyInput value={jc} onChange={setJc} />
       </Field>
     </FormSheet>

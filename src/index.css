@@ -207,7 +207,80 @@ button {
   margin: 0;
 }
 
+/* ---------- Quick actions ---------- */
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+.quickTile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.quickTile:hover {
+  border-color: var(--brand-2);
+}
+.quickTile:active {
+  transform: scale(0.97);
+}
+.quickTileIc {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  font-size: 19px;
+  margin-bottom: 4px;
+  box-shadow: var(--shadow-sm);
+}
+.quickTileLabel {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+.quickTileHint {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.setupBanner {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  text-align: left;
+  border: 1px dashed var(--brand-2);
+  background: rgba(20, 184, 166, 0.08);
+  color: var(--text-2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.setupBanner b {
+  color: var(--text);
+}
+
 /* ---------- Chart ---------- */
+.chartEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+}
 .chart {
   user-select: none;
 }
@@ -252,6 +325,7 @@ button {
 }
 .chartBar {
   width: 100%;
+  min-height: 3px;
   max-width: 26px;
   min-height: 0;
   border-radius: 4px 4px 0 0;

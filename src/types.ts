@@ -1,6 +1,6 @@
 export type Period = { mode: 'day' | 'month'; date: string } // date = YYYY-MM-DD
 
-// ---------- Ghar ka hisab ----------
+// ---------- Home accounts ----------
 export type HomeType = 'income' | 'expense'
 export interface HomeEntry {
   id: string
@@ -23,7 +23,7 @@ export interface LoanEntry {
   createdAt: number
 }
 
-// ---------- Dukaan ----------
+// ---------- Shop / business ----------
 export type BizKind = 'wallet' | 'load' | 'copy' | 'acc' | 'online'
 export type Wallet = 'easypaisa' | 'jazzcash'
 

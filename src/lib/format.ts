@@ -32,7 +32,7 @@ export function shiftPeriod(p: Period, step: number): Period {
 export function periodLabel(p: Period): string {
   const d = fromISO(p.date)
   if (p.mode === 'month') return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
-  if (p.date === today()) return 'Aaj'
+  if (p.date === today()) return 'Today'
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 

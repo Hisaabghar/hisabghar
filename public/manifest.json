@@ -1,7 +1,7 @@
 {
   "name": "Mera Khata",
   "short_name": "Mera Khata",
-  "description": "Ghar aur dukaan ka hisab",
+  "description": "Home budget and shop accounts",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b3b3a",

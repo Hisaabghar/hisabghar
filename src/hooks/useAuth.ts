@@ -11,10 +11,10 @@ import { FirebaseError } from 'firebase/app'
 import { auth } from '../lib/firebase'
 
 const AUTH_MESSAGES: Record<string, string> = {
-  'auth/too-many-requests': 'Bohat zyada koshishein. Thori dair baad try karein.',
-  'auth/network-request-failed': 'Internet check karein.',
-  'auth/popup-closed-by-user': 'Google login cancel ho gaya.',
-  'auth/operation-not-allowed': 'Firebase mein Google login on nahi hai.',
+  'auth/too-many-requests': 'Too many attempts. Please try again in a moment.',
+  'auth/network-request-failed': 'Network error. Check your internet connection.',
+  'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+  'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase.',
 }
 
 function friendly(err: unknown): Error {

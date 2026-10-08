@@ -5,7 +5,7 @@ import { byDateRange, patchItem, removeItem, useLiveDoc, useLiveQuery } from '..
 import { addDays, dailySeries, groupSum, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { BarChart } from '../ui/BarChart'
 import { COPY_TYPES, NETWORKS, NETWORK_COLORS } from '../../lib/catalog'
-import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, Row, Stat, StatGrid, Tabs } from '../ui/kit'
+import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, QuickActions, Row, Stat, StatGrid, Tabs } from '../ui/kit'
 import { KIND_ICON, KIND_LABEL, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
 import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
@@ -17,7 +17,7 @@ export const BIZ_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'load', label: 'Load', icon: '📶' },
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
   { id: 'acc', label: 'Accessories', icon: '🎧' },
-  { id: 'online', label: 'Online kaam', icon: '🪪' },
+  { id: 'online', label: 'Online services', icon: '🪪' },
 ]
 
 const ZERO: DayOpening = { cash: 0, easypaisa: 0, jazzcash: 0 }
@@ -94,31 +94,42 @@ export function BizSection({
 
       {tab === 'dash' && (
         <>
-          <Hero label={isDay ? 'Aaj ka kul profit' : 'Mahine ka kul profit'} value={totalProfit}>
+          <Hero label={isDay ? 'Profit for the day' : 'Profit for the month'} value={totalProfit}>
             <HeroStat label="Entries" value={String(entries.length)} />
-            <HeroStat label="Kul len-den" value={sum(entries, (e) => e.amount)} />
+            <HeroStat label="Total handled" value={sum(entries, (e) => e.amount)} />
           </Hero>
           {isDay && (
             <Card
-              title="Paise kahan hain"
+              title="Cash & wallet balances"
               action={
                 <button className="linkBtn" onClick={() => setEditOpening(true)}>
-                  {open ? 'Opening badlein' : 'Opening likhein'}
+                  {open ? 'Edit opening' : 'Set opening'}
                 </button>
               }
             >
-              {closing ? (
-                <StatGrid>
-                  <Stat label="Cash drawer" value={closing.cash} hint={`Subah: ${rs(open!.cash)}`} accent="#0f766e" />
-                  <Stat label="Easypaisa" value={closing.easypaisa} hint={`Subah: ${rs(open!.easypaisa)}`} accent="#16a34a" />
-                  <Stat label="JazzCash" value={closing.jazzcash} hint={`Subah: ${rs(open!.jazzcash)}`} accent="#dc2626" />
-                </StatGrid>
-              ) : (
-                <div className="empty">Subah ka opening likhein, phir din bhar ka cash, Easypaisa aur JazzCash khud hisab hota rahega.</div>
+              <StatGrid>
+                <Stat label="Cash in drawer" value={(closing ?? ZERO).cash} hint={open ? `Opening: ${rs(open.cash)}` : 'Opening not set'} accent="#0f766e" />
+                <Stat label="Easypaisa" value={(closing ?? ZERO).easypaisa} hint={open ? `Opening: ${rs(open.easypaisa)}` : 'Opening not set'} accent="#16a34a" />
+                <Stat label="JazzCash" value={(closing ?? ZERO).jazzcash} hint={open ? `Opening: ${rs(open.jazzcash)}` : 'Opening not set'} accent="#dc2626" />
+              </StatGrid>
+              {!open && (
+                <button className="setupBanner" onClick={() => setEditOpening(true)}>
+                  <b>Start your day:</b> set today's opening cash, Easypaisa and JazzCash balances — they will update
+                  automatically with every entry. ›
+                </button>
               )}
             </Card>
           )}
-          <Card title={isDay ? 'Pichle 14 din ka profit' : 'Mahine mein roz ka profit'}>
+          <Card title="Quick add">
+            <QuickActions
+              items={(['wallet', 'load', 'copy', 'acc', 'online'] as BizKind[]).map((k) => ({
+                icon: KIND_ICON[k],
+                label: KIND_LABEL[k],
+                onClick: () => setAdding(k),
+              }))}
+            />
+          </Card>
+          <Card title={isDay ? 'Profit — last 14 days' : 'Daily profit this month'}>
             <BarChart data={dailySeries(trend.items, tFrom, tTo, (e) => e.profit)} />
           </Card>
           <StatGrid>
@@ -133,8 +144,8 @@ export function BizSection({
               />
             ))}
           </StatGrid>
-          <Card title={isDay ? 'Aaj ki entries' : 'Is mahine ki entries'}>
-            <List empty="Abhi koi entry nahi. Neeche “+ Entry” dabayein.">{entries.map(rowFor)}</List>
+          <Card title={isDay ? 'Entries for the day' : 'Entries this month'}>
+            <List empty="No entries yet. Tap “+ New entry” to add one.">{entries.map(rowFor)}</List>
           </Card>
         </>
       )}
@@ -143,10 +154,10 @@ export function BizSection({
         <>
           {isDay && (
             <Card
-              title="Subah ka opening"
+              title="Opening balance"
               action={
                 <button className="linkBtn" onClick={() => setEditOpening(true)}>
-                  {open ? 'Badlein' : 'Likhein'}
+                  {open ? 'Edit' : 'Set'}
                 </button>
               }
             >
@@ -157,7 +168,7 @@ export function BizSection({
                   <Stat label="JazzCash" value={open.jazzcash} />
                 </StatGrid>
               ) : (
-                <div className="empty">Aaj subah kitne paise the? “Likhein” dabayein.</div>
+                <div className="empty">How much did you start the day with? Tap “Set”.</div>
               )}
             </Card>
           )}
@@ -168,24 +179,24 @@ export function BizSection({
             return (
               <Card key={w} title={WALLET_LABEL[w]}>
                 <StatGrid>
-                  <Stat label="Bheja / Deposit" value={sent} />
-                  <Stat label="Nikala / Withdraw" value={out} />
+                  <Stat label="Sent / Deposited" value={sent} />
+                  <Stat label="Withdrawn" value={out} />
                   <Stat label="Commission" value={sum(list, (e) => e.profit)} tone="in" />
-                  {closing && <Stat label="Abhi balance" value={closing[w]} />}
+                  {closing && <Stat label="Current balance" value={closing[w]} />}
                 </StatGrid>
               </Card>
             )
           })}
           <Card title="Entries">
-            <List empty="Koi len-den nahi">{of('wallet').map(rowFor)}</List>
+            <List empty="No transactions">{of('wallet').map(rowFor)}</List>
           </Card>
         </>
       )}
 
       {tab === 'load' && (
         <>
-          <Hero label="Load ka profit" value={profitOf('load')}>
-            <HeroStat label="Kul load" value={sum(of('load'), (e) => e.amount)} />
+          <Hero label="Load profit" value={profitOf('load')}>
+            <HeroStat label="Total load" value={sum(of('load'), (e) => e.amount)} />
           </Hero>
           <StatGrid>
             {NETWORKS.map((n) => {
@@ -202,17 +213,17 @@ export function BizSection({
             })}
           </StatGrid>
           <Card title="Entries">
-            <List empty="Koi load entry nahi">{of('load').map(rowFor)}</List>
+            <List empty="No load entries">{of('load').map(rowFor)}</List>
           </Card>
         </>
       )}
 
       {tab === 'copy' && (
         <>
-          <Hero label="Photocopy / Print ki kamai" value={profitOf('copy')}>
-            <HeroStat label="Kul pages" value={String(sum(of('copy'), (e) => e.qty ?? 0))} />
+          <Hero label="Photocopy & print income" value={profitOf('copy')}>
+            <HeroStat label="Total pages" value={String(sum(of('copy'), (e) => e.qty ?? 0))} />
           </Hero>
-          <Card title="Kis cheez se kitna">
+          <Card title="By type">
             <Breakdown rows={groupSum(of('copy'), (e) => e.copyType ?? '', (e) => e.amount)} tone="in" />
           </Card>
           <Card title="Rates">
@@ -223,45 +234,45 @@ export function BizSection({
                 </span>
               ))}
             </div>
-            <div className="statHint">Rates Settings ⚙️ se badal sakte hain.</div>
+            <div className="statHint">Change rates in Settings ⚙️.</div>
           </Card>
           <Card title="Entries">
-            <List empty="Koi entry nahi">{of('copy').map(rowFor)}</List>
+            <List empty="No entries">{of('copy').map(rowFor)}</List>
           </Card>
         </>
       )}
 
       {tab === 'acc' && (
         <>
-          <Hero label="Accessories ka profit" value={profitOf('acc')}>
-            <HeroStat label="Kul sale" value={sum(of('acc'), (e) => e.amount)} />
+          <Hero label="Accessories profit" value={profitOf('acc')}>
+            <HeroStat label="Total sales" value={sum(of('acc'), (e) => e.amount)} />
             <HeroStat label="Items" value={String(sum(of('acc'), (e) => e.qty ?? 1))} />
           </Hero>
-          <Card title="Sab se zyada bikne wale">
+          <Card title="Top sellers">
             <Breakdown rows={groupSum(of('acc'), (e) => e.item ?? '', (e) => e.amount).slice(0, 8)} tone="in" />
           </Card>
           <Card title="Entries">
-            <List empty="Koi sale nahi">{of('acc').map(rowFor)}</List>
+            <List empty="No sales">{of('acc').map(rowFor)}</List>
           </Card>
         </>
       )}
 
       {tab === 'online' && (
         <>
-          <Hero label="Online kaam ka profit" value={profitOf('online')}>
-            <HeroStat label="Kul fees" value={sum(of('online'), (e) => e.amount)} />
+          <Hero label="Online services profit" value={profitOf('online')}>
+            <HeroStat label="Total fees" value={sum(of('online'), (e) => e.amount)} />
             <HeroStat label="Pending" value={String(of('online').filter((e) => e.status !== 'done').length)} />
           </Hero>
-          <Card title="Kaun sa kaam kitna">
+          <Card title="By service">
             <Breakdown rows={groupSum(of('online'), (e) => e.service ?? '', (e) => e.profit)} tone="in" />
           </Card>
-          <Card title="Entries (status badalne ke liye Pending/Done dabayein)">
-            <List empty="Koi kaam nahi">{of('online').map(rowFor)}</List>
+          <Card title="Entries (tap Pending/Done to change status)">
+            <List empty="No services recorded">{of('online').map(rowFor)}</List>
           </Card>
         </>
       )}
 
-      <Fab label="Entry" onClick={() => setAdding(tab === 'dash' ? 'wallet' : tab)} />
+      <Fab label="New entry" onClick={() => setAdding(tab === 'dash' ? 'wallet' : tab)} />
 
       {adding && (
         <BizForm uid={uid} initialKind={adding} date={newDate} rates={settings.rates} onClose={() => setAdding(null)} />

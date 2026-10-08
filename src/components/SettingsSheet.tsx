@@ -34,18 +34,18 @@ export function SettingsSheet({
     setBusy(true)
     await mergeDoc(settingsDoc(uid), { rates: Object.fromEntries(COPY_TYPES.map((t) => [t, num(rates[t])])) })
     setBusy(false)
-    setMsg('Rates save ho gaye ✓')
+    setMsg('Rates saved ✓')
   }
 
   async function resetPin() {
     if (settings.pinHash && (await sha256(oldPin)) !== settings.pinHash) {
-      setMsg('Purana PIN galat hai')
+      setMsg('Current PIN is incorrect')
       return
     }
     await mergeDoc(settingsDoc(uid), { pinHash: deleteField() })
     onPinReset()
     setOldPin('')
-    setMsg('PIN hat gaya. Ghar ka Hisab kholne par naya PIN banayein.')
+    setMsg('PIN removed. You will set a new PIN when you next open Home Accounts.')
   }
 
   return (
@@ -62,23 +62,23 @@ export function SettingsSheet({
           ))}
         </div>
         <button className="btnPrimary full" disabled={busy} onClick={saveRates}>
-          Rates save karein
+          Save rates
         </button>
       </div>
 
       <div className="settingsGroup">
-        <div className="settingsHead">Ghar ka Hisab ka PIN</div>
+        <div className="settingsHead">Home Accounts PIN</div>
         {settings.pinHash ? (
           <>
-            <Field label="PIN badalne ke liye purana PIN likhein">
+            <Field label="Enter your current PIN to change it">
               <input type="password" inputMode="numeric" value={oldPin} onChange={(e) => setOldPin(e.target.value)} placeholder="••••" />
             </Field>
             <button className="btnGhost full" onClick={resetPin}>
-              PIN badlein
+              Change PIN
             </button>
           </>
         ) : (
-          <div className="sheetText">Abhi PIN nahi bana. Ghar ka Hisab kholne par PIN banana hoga.</div>
+          <div className="sheetText">No PIN yet. You will create one when you open Home Accounts.</div>
         )}
       </div>
 

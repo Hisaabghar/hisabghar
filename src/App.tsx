@@ -13,7 +13,7 @@ import { mergeDoc } from './hooks/useData'
 
 function App() {
   const auth = useAuth()
-  if (auth.loading) return <div className="loadingScreen">Mera Khata khul raha hai…</div>
+  if (auth.loading) return <div className="loadingScreen">Loading Mera Khata…</div>
   if (!auth.user) return <AuthScreen auth={auth} />
   return <Main uid={auth.user.id} email={auth.user.email} onSignOut={auth.signOut} />
 }
@@ -34,7 +34,7 @@ function Main({ uid, email, onSignOut }: { uid: string; email: string | null; on
       <div className="mark">MK</div>
       <div>
         <div className="title">Mera Khata</div>
-        <div className="subtitle">Ghar aur dukaan ka hisab</div>
+        <div className="subtitle">Home & shop accounts</div>
       </div>
     </div>
   )
@@ -44,7 +44,7 @@ function Main({ uid, email, onSignOut }: { uid: string; email: string | null; on
       <aside className="sidebar">
         {brand}
         <nav className="nav">
-          <div className="navGroup">🏪 Dukaan / Business</div>
+          <div className="navGroup">🏪 Shop / Business</div>
           {BIZ_TABS.map((t) => (
             <button
               key={t.id}
@@ -59,7 +59,7 @@ function Main({ uid, email, onSignOut }: { uid: string; email: string | null; on
             </button>
           ))}
           <div className="navGroup">
-            🔒 Ghar ka Hisab
+            🔒 Home Accounts
             {unlocked && (
               <button className="navLock" onClick={() => setUnlocked(false)}>
                 Lock
@@ -99,10 +99,10 @@ function Main({ uid, email, onSignOut }: { uid: string; email: string | null; on
 
         <div className="sectionSwitch mobileOnly">
           <button className={section === 'home' ? 'active' : ''} onClick={() => setSection('home')}>
-            🔒 Ghar ka Hisab
+            🔒 Home Accounts
           </button>
           <button className={section === 'biz' ? 'active' : ''} onClick={() => setSection('biz')}>
-            🏪 Dukaan / Business
+            🏪 Shop / Business
           </button>
         </div>
 

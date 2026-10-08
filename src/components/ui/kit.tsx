@@ -57,15 +57,15 @@ export function PeriodBar({
       {allowDay && (
         <Segmented
           options={[
-            { id: 'day', label: 'Din' },
-            { id: 'month', label: 'Mahina' },
+            { id: 'day', label: 'Day' },
+            { id: 'month', label: 'Month' },
           ]}
           value={period.mode}
           onChange={(mode) => onChange({ mode, date: period.date })}
         />
       )}
       <div className="periodNav">
-        <button className="navBtn" onClick={() => onChange(shiftPeriod(period, -1))} aria-label="Pichla">
+        <button className="navBtn" onClick={() => onChange(shiftPeriod(period, -1))} aria-label="Previous">
           ‹
         </button>
         <label className="periodLabel">
@@ -80,12 +80,12 @@ export function PeriodBar({
             }}
           />
         </label>
-        <button className="navBtn" onClick={() => onChange(shiftPeriod(period, 1))} aria-label="Agla">
+        <button className="navBtn" onClick={() => onChange(shiftPeriod(period, 1))} aria-label="Next">
           ›
         </button>
         {period.date !== today() && (
           <button className="todayBtn" onClick={() => onChange({ ...period, date: today() })}>
-            Aaj
+            Today
           </button>
         )}
       </div>
@@ -157,7 +157,7 @@ export function Card({ title, action, children }: { title?: string; action?: Rea
 
 export function Breakdown({ rows, tone }: { rows: [string, number][]; tone?: 'in' | 'out' }) {
   const max = Math.max(1, ...rows.map((r) => r[1]))
-  if (rows.length === 0) return <div className="empty">Abhi kuch nahi</div>
+  if (rows.length === 0) return <div className="empty">Nothing recorded for this period yet</div>
   return (
     <div className="breakdown">
       {rows.map(([label, v]) => (
@@ -283,7 +283,7 @@ export function FormSheet({
       await onSave()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save nahi hua')
+      setError(err instanceof Error ? err.message : 'Could not save')
     } finally {
       setSaving(false)
     }
@@ -297,7 +297,7 @@ export function FormSheet({
           Cancel
         </button>
         <button className="btnPrimary" disabled={!canSave || saving} onClick={save}>
-          {saving ? 'Save ho raha hai…' : 'Save'}
+          {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
     </Sheet>
@@ -306,11 +306,11 @@ export function FormSheet({
 
 export function ConfirmDelete({ what, onClose, onConfirm }: { what: string; onClose: () => void; onConfirm: () => Promise<void> }) {
   return (
-    <Sheet title="Delete karein?" onClose={onClose}>
+    <Sheet title="Delete this entry?" onClose={onClose}>
       <p className="sheetText">{what}</p>
       <div className="sheetBtns">
         <button className="btnGhost" onClick={onClose}>
-          Nahi
+          Cancel
         </button>
         <button
           className="btnDanger"
@@ -319,10 +319,24 @@ export function ConfirmDelete({ what, onClose, onConfirm }: { what: string; onCl
             onClose()
           }}
         >
-          Haan, delete
+          Delete
         </button>
       </div>
     </Sheet>
+  )
+}
+
+export function QuickActions({ items }: { items: { icon: string; label: string; hint?: string; onClick: () => void }[] }) {
+  return (
+    <div className="quickGrid">
+      {items.map((it) => (
+        <button key={it.label} className="quickTile" onClick={it.onClick}>
+          <span className="quickTileIc">{it.icon}</span>
+          <span className="quickTileLabel">{it.label}</span>
+          {it.hint && <span className="quickTileHint">{it.hint}</span>}
+        </button>
+      ))}
+    </div>
   )
 }
 

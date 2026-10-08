@@ -6,10 +6,10 @@ import { rs, shortDate, sum, today } from '../../lib/format'
 import { Card, ConfirmDelete, Fab, Field, FormSheet, List, MoneyInput, Row, Stat, StatGrid, num } from '../ui/kit'
 
 const KIND_LABEL: Record<LoanKind, string> = {
-  diya: 'Maine udhaar diya',
-  liya: 'Maine udhaar liya',
-  wapasMila: 'Mujhe wapas mila',
-  wapasKiya: 'Maine wapas kiya',
+  diya: 'I lent money',
+  liya: 'I borrowed money',
+  wapasMila: 'I got paid back',
+  wapasKiya: 'I paid back',
 }
 const KIND_ICON: Record<LoanKind, string> = { diya: '📤', liya: '📥', wapasMila: '✅', wapasKiya: '✔️' }
 /** +1 means the other person owes me more after this entry. */
@@ -35,25 +35,25 @@ export function LoansTab({ uid, loans }: { uid: string; loans: LoanEntry[] }) {
     return (
       <>
         <button className="backLink" onClick={() => setPerson(null)}>
-          ‹ Sab log
+          ‹ All people
         </button>
         <div className="hero">
           <div className="heroLabel">{person}</div>
           <div className="heroAmt">{rs(Math.abs(net))}</div>
           <div className="heroRow">
-            <span className="heroChip">{net > 0 ? 'Is se lena hai' : net < 0 ? 'Is ko dena hai' : 'Hisab barabar ✓'}</span>
+            <span className="heroChip">{net > 0 ? 'Owes me' : net < 0 ? 'I owe them' : 'Settled ✓'}</span>
           </div>
         </div>
         <div className="quickAdd">
           <button className="quickBtn" onClick={() => setAdding({ person, kind: net < 0 ? 'wapasKiya' : 'wapasMila' })}>
-            <span className="qIc">↩</span> Wapsi likhein
+            <span className="qIc">↩</span> Record repayment
           </button>
           <button className="quickBtn plain" onClick={() => setAdding({ person, kind: 'diya' })}>
-            <span className="qIc">+</span> Naya udhaar
+            <span className="qIc">+</span> New loan
           </button>
         </div>
-        <Card title="Poori history">
-          <List empty="Koi entry nahi">
+        <Card title="History">
+          <List empty="No entries">
             {list.map((l) => (
               <Row
                 key={l.id}
@@ -83,25 +83,25 @@ export function LoansTab({ uid, loans }: { uid: string; loans: LoanEntry[] }) {
   return (
     <>
       <StatGrid>
-        <Stat label="Mujhe lena hai" value={lena} tone="in" />
-        <Stat label="Mujhe dena hai" value={dena} tone="out" />
+        <Stat label="Others owe me" value={lena} tone="in" />
+        <Stat label="I owe others" value={dena} tone="out" />
       </StatGrid>
       <div className="quickAdd">
         <button className="quickBtn" onClick={() => setAdding({ kind: 'diya' })}>
-          <span className="qIc">↑</span> Udhaar diya
+          <span className="qIc">↑</span> I lent
         </button>
         <button className="quickBtn secondary" onClick={() => setAdding({ kind: 'liya' })}>
-          <span className="qIc">↓</span> Udhaar liya
+          <span className="qIc">↓</span> I borrowed
         </button>
       </div>
-      <Card title="Log">
-        <List empty="Abhi koi udhaar nahi">
+      <Card title="People">
+        <List empty="No loans yet. Use “I lent” or “I borrowed” to add one.">
           {balances.map((b) => (
             <Row
               key={b.name}
               icon={b.name.slice(0, 1).toUpperCase()}
               title={b.name}
-              sub={b.net > 0 ? 'Is se lena hai' : b.net < 0 ? 'Is ko dena hai' : 'Hisab barabar'}
+              sub={b.net > 0 ? 'Owes me' : b.net < 0 ? 'I owe them' : 'Settled'}
               amount={rs(Math.abs(b.net))}
               amountSub={b.last ? shortDate(b.last) : undefined}
               tone={b.net > 0 ? 'in' : b.net < 0 ? 'out' : undefined}
@@ -110,7 +110,7 @@ export function LoansTab({ uid, loans }: { uid: string; loans: LoanEntry[] }) {
           ))}
         </List>
       </Card>
-      <Fab label="Udhaar" onClick={() => setAdding({ kind: 'diya' })} />
+      <Fab label="Loan" onClick={() => setAdding({ kind: 'diya' })} />
       {adding && <LoanForm uid={uid} initial={adding} people={[...people.keys()]} onClose={() => setAdding(null)} />}
     </>
   )
@@ -135,20 +135,20 @@ function LoanForm({
 
   return (
     <FormSheet
-      title="Udhaar ki entry"
+      title="Loan entry"
       onClose={onClose}
       canSave={num(amount) > 0 && person.trim().length > 0}
       onSave={() => addItem(loansCol(uid), { person: person.trim(), kind, amount: num(amount), note: note.trim(), date })}
     >
-      <Field label="Kis ke sath">
-        <input list="loanPeople" value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Naam likhein" autoFocus={!initial.person} />
+      <Field label="Person">
+        <input list="loanPeople" value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Name" autoFocus={!initial.person} />
         <datalist id="loanPeople">
           {people.map((p) => (
             <option key={p} value={p} />
           ))}
         </datalist>
       </Field>
-      <Field label="Kya hua">
+      <Field label="Type">
         <div className="kindGrid">
           {(Object.keys(KIND_LABEL) as LoanKind[]).map((k) => (
             <button key={k} type="button" className={`kindBtn ${k === kind ? 'active' : ''}`} onClick={() => setKind(k)}>
@@ -157,13 +157,13 @@ function LoanForm({
           ))}
         </div>
       </Field>
-      <Field label="Raqam (Rs)">
+      <Field label="Amount (Rs)">
         <MoneyInput value={amount} onChange={setAmount} autoFocus={!!initial.person} />
       </Field>
-      <Field label="Detail (optional)">
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Jaise: mahine ke aakhir tak wapas karega" />
+      <Field label="Note (optional)">
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. will return by end of month" />
       </Field>
-      <Field label="Tareekh">
+      <Field label="Date">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </Field>
     </FormSheet>
