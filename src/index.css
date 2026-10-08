@@ -438,7 +438,7 @@ button {
 /* ---------- Section switch & tabs ---------- */
 .sectionSwitch {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
   padding: 6px;
   background: var(--surface);
@@ -1983,4 +1983,103 @@ button {
   border-color: #f5b942;
   background: rgba(245, 185, 66, 0.1);
   margin: 0 0 12px;
+}
+
+/* ---------- Mentor ---------- */
+.mentorNav {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(245, 185, 66, 0.12));
+  margin-bottom: 4px;
+}
+.mentor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 240px;
+  max-height: calc(100vh - 360px);
+  overflow-y: auto;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.bubble {
+  max-width: 85%;
+  padding: 10px 13px;
+  border-radius: 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  animation: fadeIn 0.2s ease both;
+}
+.bubble.me {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--brand-2), var(--brand));
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.bubble.bot {
+  align-self: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.botLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.botLinks a {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--brand-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  text-decoration: none;
+}
+.suggest {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.suggest::-webkit-scrollbar {
+  display: none;
+}
+.suggest .chip {
+  flex: 0 0 auto;
+}
+.askBar {
+  display: flex;
+  gap: 8px;
+}
+.askBar input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: var(--font);
+}
+.askBar input:focus {
+  outline: none;
+  border-color: var(--brand-2);
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+}
+.askBar .btnPrimary {
+  flex: 0 0 auto;
+  padding: 12px 22px;
 }

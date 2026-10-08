@@ -10,6 +10,7 @@ import { HOME_TABS, HomeSection, type HomeTab } from './components/home/HomeSect
 import { PinGate } from './components/home/PinGate'
 import { BizSection, bizTabs, type BizTab } from './components/biz/BizSection'
 import { AddBizSheet } from './components/biz/AddBizSheet'
+import { MentorPage } from './components/MentorPage'
 import { SettingsSheet } from './components/SettingsSheet'
 import { mergeDoc } from './hooks/useData'
 
@@ -20,7 +21,7 @@ function App() {
   return <Main user={auth.user} onSignOut={auth.signOut} />
 }
 
-type Section = 'home' | 'biz'
+type Section = 'home' | 'biz' | 'mentor'
 
 type User = { id: string; email: string | null; name: string | null; photo: string | null }
 
@@ -80,6 +81,10 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       <aside className="sidebar">
         {brand}
         <nav className="nav">
+          <button className={`navItem mentorNav ${section === 'mentor' ? 'active' : ''}`} onClick={() => setSection('mentor')}>
+            <span className="navIc">🤖</span>
+            Mentor
+          </button>
           <div className="navGroup">🏪 Shop / Business</div>
           {bizTabs(settings).map((t) => (
             <button
@@ -168,12 +173,27 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
 
         <div className="sectionSwitch mobileOnly">
           <button className={section === 'home' ? 'active' : ''} onClick={() => setSection('home')}>
-            🔒 Home Accounts
+            🔒 Home
           </button>
           <button className={section === 'biz' ? 'active' : ''} onClick={() => setSection('biz')}>
-            🏪 Shop / Business
+            🏪 Shop
+          </button>
+          <button className={section === 'mentor' ? 'active' : ''} onClick={() => setSection('mentor')}>
+            🤖 Mentor
           </button>
         </div>
+
+        {section === 'mentor' && (
+          <MentorPage
+            uid={uid}
+            settings={settings}
+            homeUnlocked={unlocked}
+            onOpenHome={() => {
+              setSection('home')
+              setHomeTab('summary')
+            }}
+          />
+        )}
 
         {section === 'biz' && <BizSection uid={uid} settings={settings} tab={bizTab} setTab={setBizTab} />}
 
