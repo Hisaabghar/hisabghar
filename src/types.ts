@@ -70,6 +70,7 @@ export interface BizEntry {
   // online kaam
   service?: string
   customer?: string
+  phone?: string
   status?: 'pending' | 'done'
 }
 

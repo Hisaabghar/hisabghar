@@ -56,12 +56,15 @@ export function BizForm({
   // online
   const [service, setService] = useState(ONLINE_SERVICES[0])
   const [customer, setCustomer] = useState('')
+  const [phone, setPhone] = useState('')
+  // Optional customer details, saved only when filled in.
+  const who = { ...(customer.trim() ? { customer: customer.trim() } : {}), ...(phone.trim() ? { phone: phone.trim() } : {}) }
   const [status, setStatus] = useState<'pending' | 'done'>('done')
 
   const q = Math.max(1, num(qty))
   let draft: Draft | null = null
   if (kind === 'wallet' && num(amount) > 0)
-    draft = { kind, date, note, amount: num(amount), profit: num(profit), wallet, dir }
+    draft = { kind, date, note, amount: num(amount), profit: num(profit), wallet, dir, ...who }
   if (kind === 'load' && num(amount) > 0) draft = { kind, date, note, amount: num(amount), profit: num(profit), network }
   if (kind === 'copy' && num(rate) > 0)
     draft = { kind, date, note, amount: q * num(rate), profit: q * num(rate), copyType, qty: q, rate: num(rate) }
@@ -73,7 +76,7 @@ export function BizForm({
       date,
       note,
       service,
-      customer: customer.trim(),
+      ...who,
       status,
       cost: num(cost),
       amount: num(amount),
@@ -181,8 +184,9 @@ export function BizForm({
               <MoneyInput value={profit} onChange={setProfit} />
             </Field>
           </div>
-          <Field label="Number / Name (optional)">
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="03xx-xxxxxxx" />
+          <CustomerFields customer={customer} phone={phone} setCustomer={setCustomer} setPhone={setPhone} />
+          <Field label="Note (optional)">
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. TID / reference no." />
           </Field>
         </>
       )}
@@ -269,9 +273,7 @@ export function BizForm({
               ))}
             </select>
           </Field>
-          <Field label="Customer name">
-            <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Name" />
-          </Field>
+          <CustomerFields customer={customer} phone={phone} setCustomer={setCustomer} setPhone={setPhone} />
           <div className="twoFields">
             <Field label="Fee charged (Rs)">
               <MoneyInput value={amount} onChange={setAmount} />
@@ -288,8 +290,8 @@ export function BizForm({
             value={status}
             onChange={setStatus}
           />
-          <Field label="Phone / Note (optional)">
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="03xx-xxxxxxx, tracking no." />
+          <Field label="Note (optional)">
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. tracking / application no." />
           </Field>
           <div className="totalLine">
             Profit: <b>{rsRaw(num(amount) - num(cost))}</b>
@@ -301,5 +303,36 @@ export function BizForm({
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </Field>
     </FormSheet>
+  )
+}
+
+function CustomerFields({
+  customer,
+  phone,
+  setCustomer,
+  setPhone,
+}: {
+  customer: string
+  phone: string
+  setCustomer: (v: string) => void
+  setPhone: (v: string) => void
+}) {
+  return (
+    <div className="twoFields">
+      <Field label="Customer name (optional)">
+        <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Name" autoComplete="off" />
+      </Field>
+      <Field label="Phone number (optional)">
+        <input
+          type="tel"
+          inputMode="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/[^\d+\- ]/g, ''))}
+          placeholder="03xx-xxxxxxx"
+          autoComplete="off"
+          maxLength={16}
+        />
+      </Field>
+    </div>
   )
 }

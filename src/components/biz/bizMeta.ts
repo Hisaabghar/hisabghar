@@ -43,7 +43,8 @@ export function entryTitle(e: BizEntry): string {
 
 export function entrySub(e: BizEntry): string | undefined {
   const parts: string[] = []
-  if (e.kind === 'online' && e.customer) parts.push(e.customer)
+  if (e.customer) parts.push(e.customer)
+  if (e.phone) parts.push(e.phone)
   if (e.note) parts.push(e.note)
   if (e.discount) parts.push(`Discount ${rs(e.discount)}`)
   if (e.kind === 'wallet') parts.push(`Commission ${rs(e.profit)}`)
