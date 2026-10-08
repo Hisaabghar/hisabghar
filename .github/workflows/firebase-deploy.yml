@@ -1,0 +1,41 @@
+name: Deploy to Firebase Hosting
+
+# Builds the web app and publishes it to https://mera-khata-30f9b.web.app on every push.
+# Needs the FIREBASE_SERVICE_ACCOUNT_MERA_KHATA_30F9B repository secret, which
+# `firebase init hosting:github` creates once.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/happy-cori-yigp1r
+      - claude/ledger-android-capacitor-89k3l1
+      - main
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MERA_KHATA_30F9B }}
+          projectId: mera-khata-30f9b
+          channelId: live

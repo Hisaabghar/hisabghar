@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { HomeEntry, HomeType, LoanEntry, Period } from '../../types'
 import { homeCol, loansCol } from '../../lib/paths'
 import { addItem, allByDate, removeItem, useLiveQuery } from '../../hooks/useData'
-import { groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
+import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME, ICONS } from '../../lib/catalog'
 import {
   Breakdown,
@@ -25,14 +25,29 @@ import {
   num,
 } from '../ui/kit'
 import { LoansTab } from './LoansTab'
+import { BarChart } from '../ui/BarChart'
 
-type Tab = 'summary' | 'entries' | 'udhaar'
+export type HomeTab = 'summary' | 'entries' | 'udhaar'
+export const HOME_TABS: { id: HomeTab; label: string; icon: string }[] = [
+  { id: 'summary', label: 'Khulasa', icon: '📈' },
+  { id: 'entries', label: 'Aamdani / Kharcha', icon: '🧾' },
+  { id: 'udhaar', label: 'Udhaar', icon: '🤝' },
+]
 
 const byNewest = (a: { date: string; createdAt: number }, b: { date: string; createdAt: number }) =>
   b.date.localeCompare(a.date) || b.createdAt - a.createdAt
 
-export function HomeSection({ uid, onLock }: { uid: string; onLock: () => void }) {
-  const [tab, setTab] = useState<Tab>('summary')
+export function HomeSection({
+  uid,
+  onLock,
+  tab,
+  setTab,
+}: {
+  uid: string
+  onLock: () => void
+  tab: HomeTab
+  setTab: (t: HomeTab) => void
+}) {
   const [period, setPeriod] = useState<Period>({ mode: 'month', date: today() })
   const [adding, setAdding] = useState<HomeType | null>(null)
   const [deleting, setDeleting] = useState<HomeEntry | null>(null)
@@ -56,23 +71,17 @@ export function HomeSection({ uid, onLock }: { uid: string; onLock: () => void }
 
   return (
     <>
-      <div className="sectionHead">
-        <Tabs
-          tabs={[
-            { id: 'summary', label: 'Khulasa' },
-            { id: 'entries', label: 'Entries' },
-            { id: 'udhaar', label: 'Udhaar' },
-          ]}
-          value={tab}
-          onChange={setTab}
-        />
+      <div className="sectionHead mobileOnly">
+        <Tabs tabs={HOME_TABS} value={tab} onChange={setTab} />
         <button className="lockBtn" onClick={onLock} title="Lock karein">
           🔒 Lock
         </button>
       </div>
+      <div className="pageHead">
+        <h1 className="pageTitle desktopOnly">{HOME_TABS.find((t) => t.id === tab)?.label}</h1>
+        {tab !== 'udhaar' && <PeriodBar period={period} onChange={setPeriod} />}
+      </div>
       {err && <div className="errorBanner">{err}</div>}
-
-      {tab !== 'udhaar' && <PeriodBar period={period} onChange={setPeriod} />}
 
       {tab === 'summary' && (
         <>
@@ -81,6 +90,11 @@ export function HomeSection({ uid, onLock }: { uid: string; onLock: () => void }
             <HeroStat label="Aaye" value={incomeSum} />
             <HeroStat label="Kharch hue" value={expenseSum} />
           </Hero>
+          {period.mode === 'month' && (
+            <Card title="Roz ka kharcha">
+              <BarChart data={dailySeries(expense, range[0], range[1], (e) => e.amount)} tone="out" />
+            </Card>
+          )}
           <div className="twoCol">
             <Card title="Kahan kharch hua">
               <Breakdown rows={groupSum(expense, (e) => e.category, (e) => e.amount)} tone="out" />

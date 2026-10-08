@@ -55,3 +55,32 @@ export async function sha256(text: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+/** Every date (YYYY-MM-DD) from `from` to `to`, inclusive. */
+export function daysBetween(from: string, to: string): string[] {
+  const out: string[] = []
+  const d = fromISO(from)
+  const end = fromISO(to)
+  while (d <= end) {
+    out.push(toISO(d))
+    d.setDate(d.getDate() + 1)
+  }
+  return out
+}
+
+export function addDays(date: string, n: number): string {
+  const d = fromISO(date)
+  d.setDate(d.getDate() + n)
+  return toISO(d)
+}
+
+/** Daily totals for a chart: one bar per day in [from, to]. */
+export function dailySeries<T extends { date: string }>(xs: T[], from: string, to: string, val: (x: T) => number) {
+  const m = new Map<string, number>()
+  for (const x of xs) m.set(x.date, (m.get(x.date) ?? 0) + val(x))
+  return daysBetween(from, to).map((date) => ({
+    label: String(Number(date.slice(8))),
+    tip: shortDate(date),
+    value: m.get(date) ?? 0,
+  }))
+}

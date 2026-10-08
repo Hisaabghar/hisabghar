@@ -69,9 +69,231 @@ button {
   min-height: 100vh;
 }
 .app {
-  max-width: 980px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 18px 16px 120px;
+}
+
+/* ---------- Shell: sidebar on desktop, stacked on mobile ---------- */
+.sidebar,
+.desktopOnly {
+  display: none;
+}
+@media (min-width: 900px) {
+  .mobileOnly {
+    display: none !important;
+  }
+  .desktopOnly {
+    display: block;
+  }
+  .shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 22px 16px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+  }
+  .app {
+    width: 100%;
+    padding: 26px 32px 110px;
+  }
+  .fab {
+    right: 32px !important;
+  }
+}
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.navGroup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  padding: 16px 10px 6px;
+}
+.navLock {
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 3px 8px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.navItem:hover {
+  background: var(--surface-2);
+}
+.navItem.active {
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--text);
+}
+.navItem.active .navIc {
+  background: var(--brand);
+}
+.navIc {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  font-size: 15px;
+  flex: 0 0 auto;
+}
+.sideFoot {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.sideUser {
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 6px 10px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.pageHead .periodBar {
+  margin-bottom: 0;
+}
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 0;
+}
+
+/* ---------- Chart ---------- */
+.chart {
+  user-select: none;
+}
+.chartPlot {
+  position: relative;
+  margin-left: 44px;
+}
+.chartGrid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.chartGridLine {
+  position: relative;
+  border-top: 1px dashed var(--line);
+  height: 0;
+}
+.chartGridLine span {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: -7px;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.chartBars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+}
+.chartCol {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 1px;
+  cursor: pointer;
+}
+.chartBar {
+  width: 100%;
+  max-width: 26px;
+  min-height: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--brand-2);
+  transition: opacity 0.15s ease;
+}
+.chartBar.out {
+  background: var(--out);
+}
+.chartBars:hover .chartBar:not(.hot) {
+  opacity: 0.55;
+}
+.chartTip {
+  position: absolute;
+  top: -8px;
+  transform: translate(-50%, -100%);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.chartTipLabel {
+  opacity: 0.75;
+  font-size: 11px;
+}
+.chartTipVal {
+  font-weight: 700;
+}
+.chartAxis {
+  display: flex;
+  margin: 6px 0 0 44px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.chartAxis span {
+  text-align: center;
+  overflow: visible;
+  white-space: nowrap;
 }
 
 /* ---------- Header ---------- */
@@ -360,6 +582,9 @@ button {
   box-shadow: var(--shadow-sm);
   padding: 16px;
   margin-bottom: 14px;
+}
+.card:has(.chart) .cardHead {
+  margin-bottom: 26px;
 }
 .cardHead {
   display: flex;

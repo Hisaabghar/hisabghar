@@ -2,27 +2,37 @@ import { useState } from 'react'
 import type { BizEntry, BizKind, DayOpening, Period, Settings } from '../../types'
 import { bizCol, dayDoc } from '../../lib/paths'
 import { byDateRange, patchItem, removeItem, useLiveDoc, useLiveQuery } from '../../hooks/useData'
-import { groupSum, periodRange, rs, shortDate, sum, today } from '../../lib/format'
+import { addDays, dailySeries, groupSum, periodRange, rs, shortDate, sum, today } from '../../lib/format'
+import { BarChart } from '../ui/BarChart'
 import { COPY_TYPES, NETWORKS, NETWORK_COLORS } from '../../lib/catalog'
 import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, Row, Stat, StatGrid, Tabs } from '../ui/kit'
 import { KIND_ICON, KIND_LABEL, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
 import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
 
-type Tab = 'dash' | BizKind
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'dash', label: 'Dashboard' },
-  { id: 'wallet', label: 'Easypaisa / JazzCash' },
-  { id: 'load', label: 'Load' },
-  { id: 'copy', label: 'Photocopy' },
-  { id: 'acc', label: 'Accessories' },
-  { id: 'online', label: 'Online kaam' },
+export type BizTab = 'dash' | BizKind
+export const BIZ_TABS: { id: BizTab; label: string; icon: string }[] = [
+  { id: 'dash', label: 'Dashboard', icon: '📊' },
+  { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
+  { id: 'load', label: 'Load', icon: '📶' },
+  { id: 'copy', label: 'Photocopy', icon: '🖨️' },
+  { id: 'acc', label: 'Accessories', icon: '🎧' },
+  { id: 'online', label: 'Online kaam', icon: '🪪' },
 ]
 
 const ZERO: DayOpening = { cash: 0, easypaisa: 0, jazzcash: 0 }
 
-export function BizSection({ uid, settings }: { uid: string; settings: Settings }) {
-  const [tab, setTab] = useState<Tab>('dash')
+export function BizSection({
+  uid,
+  settings,
+  tab,
+  setTab,
+}: {
+  uid: string
+  settings: Settings
+  tab: BizTab
+  setTab: (t: BizTab) => void
+}) {
   const [period, setPeriod] = useState<Period>({ mode: 'day', date: today() })
   const [adding, setAdding] = useState<BizKind | null>(null)
   const [deleting, setDeleting] = useState<BizEntry | null>(null)
@@ -30,6 +40,9 @@ export function BizSection({ uid, settings }: { uid: string; settings: Settings 
 
   const [from, to] = periodRange(period)
   const { items, error } = useLiveQuery<BizEntry>(byDateRange(bizCol(uid), from, to), `biz-${uid}-${from}-${to}`)
+  // Chart window: the whole month, or the 14 days ending on the chosen day.
+  const [tFrom, tTo] = period.mode === 'month' ? [from, to] : [addDays(period.date, -13), period.date]
+  const trend = useLiveQuery<BizEntry>(byDateRange(bizCol(uid), tFrom, tTo), `biz-${uid}-${tFrom}-${tTo}`)
   const entries = [...items].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
   const opening = useLiveDoc<DayOpening>(period.mode === 'day' ? dayDoc(uid, period.date) : null, `day-${uid}-${period.mode}-${period.date}`)
   const open = period.mode === 'day' ? (opening.data ?? null) : null
@@ -70,8 +83,13 @@ export function BizSection({ uid, settings }: { uid: string; settings: Settings 
 
   return (
     <>
-      <Tabs tabs={TABS} value={tab} onChange={setTab} />
-      <PeriodBar period={period} onChange={setPeriod} />
+      <div className="mobileOnly">
+        <Tabs tabs={BIZ_TABS} value={tab} onChange={setTab} />
+      </div>
+      <div className="pageHead">
+        <h1 className="pageTitle desktopOnly">{BIZ_TABS.find((t) => t.id === tab)?.label}</h1>
+        <PeriodBar period={period} onChange={setPeriod} />
+      </div>
       {error && <div className="errorBanner">{error}</div>}
 
       {tab === 'dash' && (
@@ -100,6 +118,9 @@ export function BizSection({ uid, settings }: { uid: string; settings: Settings 
               )}
             </Card>
           )}
+          <Card title={isDay ? 'Pichle 14 din ka profit' : 'Mahine mein roz ka profit'}>
+            <BarChart data={dailySeries(trend.items, tFrom, tTo, (e) => e.profit)} />
+          </Card>
           <StatGrid>
             {(['wallet', 'load', 'copy', 'acc', 'online'] as BizKind[]).map((k) => (
               <Stat
