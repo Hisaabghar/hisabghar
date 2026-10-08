@@ -3,7 +3,7 @@ import { arrayUnion } from 'firebase/firestore'
 import type { HomeType } from '../../types'
 import { homeCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
-import { today } from '../../lib/format'
+import { rsRaw, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME } from '../../lib/catalog'
 import { Chips, Field, FormSheet, MoneyInput, Segmented, num } from '../ui/kit'
 
@@ -134,26 +134,42 @@ export function HomeForm({
         : type === 'income'
           ? 'Add income'
           : 'Add expense'
-  const canSave = num(amount) > 0 && (!isTransfer || (toAccount && toAccount !== account))
+  // Income can be split: part of the amount may belong to other people.
+  const [split, setSplit] = useState(false)
+  const [shares, setShares] = useState<{ person: string; amount: string }[]>([{ person: '', amount: '' }])
+  const splitting = type === 'income' && split
+  const othersTotal = splitting ? shares.reduce((s, x) => s + num(x.amount), 0) : 0
+  const mineLeft = num(amount) - othersTotal
+  const sharesValid = !splitting || (mineLeft >= 0 && shares.some((x) => x.person.trim() && num(x.amount) > 0))
+
+  const canSave = num(amount) > 0 && sharesValid && (!isTransfer || (toAccount && toAccount !== account))
+
+  async function save() {
+    const base = { type, account, note: note.trim(), date, time, ...(isTransfer ? { toAccount } : {}) }
+    if (!splitting) {
+      await addItem(homeCol(uid), {
+        ...base,
+        amount: num(amount),
+        category: isTransfer ? 'Transfer' : category,
+        ...(owner !== ME ? { owner } : {}),
+      })
+      return
+    }
+    const parts = shares.filter((x) => x.person.trim() && num(x.amount) > 0)
+    for (const p of parts) {
+      await addItem(homeCol(uid), { ...base, amount: num(p.amount), category: 'Kept for someone', owner: p.person.trim() })
+    }
+    if (mineLeft > 0) await addItem(homeCol(uid), { ...base, amount: mineLeft, category })
+    const newPeople = parts.map((p) => p.person.trim()).filter((p) => !owners.includes(p))
+    if (newPeople.length) await mergeDoc(settingsDoc(uid), { owners: arrayUnion(...newPeople) })
+  }
 
   return (
     <FormSheet
       title={title}
       onClose={onClose}
       canSave={!!canSave}
-      onSave={() =>
-        addItem(homeCol(uid), {
-          type,
-          amount: num(amount),
-          category: isTransfer ? 'Transfer' : category,
-          account,
-          ...(isTransfer ? { toAccount } : {}),
-          ...(owner !== ME ? { owner } : {}),
-          note: note.trim(),
-          date,
-          time,
-        })
-      }
+      onSave={save}
     >
       <Segmented
         options={[
@@ -170,17 +186,73 @@ export function HomeForm({
       <Field label="Amount (Rs)">
         <MoneyInput value={amount} onChange={setAmount} autoFocus />
       </Field>
-      <Field label="Whose money?">
-        <OwnerPicker
-          uid={uid}
-          owners={owners}
-          value={owner}
-          onChange={(o) => {
-            setOwner(o)
-            if (!isTransfer) setCategory(defaultCat(type, o))
-          }}
-        />
-      </Field>
+      {type === 'income' ? (
+        <Field label="Is all of this yours?">
+          <Segmented
+            options={[
+              { id: 'mine', label: 'All mine' },
+              { id: 'split', label: "Some is others' money" },
+            ]}
+            value={split ? 'split' : 'mine'}
+            onChange={(v) => setSplit(v === 'split')}
+          />
+          {split && (
+            <div className="splitBox">
+              <datalist id="ownerList">
+                {owners.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+              {shares.map((sh, i) => (
+                <div key={i} className="splitRow">
+                  <input
+                    list="ownerList"
+                    value={sh.person}
+                    placeholder="Whose? e.g. Uncle"
+                    onChange={(e) => setShares((s) => s.map((x, j) => (j === i ? { ...x, person: e.target.value } : x)))}
+                  />
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={sh.amount}
+                    placeholder="Amount"
+                    onChange={(e) => setShares((s) => s.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))}
+                  />
+                  {shares.length > 1 && (
+                    <button type="button" className="splitDel" onClick={() => setShares((s) => s.filter((_, j) => j !== i))}>
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button type="button" className="linkBtn" onClick={() => setShares((s) => [...s, { person: '', amount: '' }])}>
+                + Add another person
+              </button>
+              <div className={`totalLine ${mineLeft < 0 ? 'bad' : ''}`}>
+                {mineLeft < 0 ? (
+                  <>Others' shares are more than the total by {rsRaw(-mineLeft)}</>
+                ) : (
+                  <>
+                    Others: <b>{rsRaw(othersTotal)}</b> · Mine: <b>{rsRaw(mineLeft)}</b>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </Field>
+      ) : (
+        <Field label="Whose money?">
+          <OwnerPicker
+            uid={uid}
+            owners={owners}
+            value={owner}
+            onChange={(o) => {
+              setOwner(o)
+              if (!isTransfer) setCategory(defaultCat(type, o))
+            }}
+          />
+        </Field>
+      )}
       <Field label={type === 'income' ? 'Received in' : isTransfer ? 'From account' : 'Paid from'}>
         <AccountPicker uid={uid} accounts={accounts} value={account} onChange={setAccount} />
       </Field>
@@ -189,7 +261,7 @@ export function HomeForm({
           <AccountPicker uid={uid} accounts={accounts} value={toAccount} onChange={setToAccount} exclude={account} />
         </Field>
       ) : (
-        <Field label={type === 'income' ? 'Source' : 'Spent on'}>
+        <Field label={type === 'income' ? (splitting ? 'Source of your part' : 'Source') : 'Spent on'}>
           <Chips options={cats} value={category} onChange={setCategory} />
         </Field>
       )}
