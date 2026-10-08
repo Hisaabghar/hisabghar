@@ -92,6 +92,7 @@ const JOB_LINKS = [
   { label: 'KPPSC (Khyber Pakhtunkhwa)', url: 'https://www.kppsc.gov.pk' },
   { label: 'BPSC (Balochistan)', url: 'https://www.bpsc.gob.pk' },
   { label: 'NTS', url: 'https://www.nts.org.pk' },
+  { label: 'Pakistan Railways', url: 'https://www.pakrail.gov.pk' },
   { label: 'Pakistan Army', url: 'https://joinpakarmy.gov.pk' },
   { label: 'Pakistan Navy', url: 'https://www.joinpaknavy.gov.pk' },
   { label: 'Pakistan Air Force', url: 'https://www.joinpaf.gov.pk' },

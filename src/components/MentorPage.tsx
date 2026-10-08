@@ -179,6 +179,9 @@ export function MentorPage({
             </div>
           ) : m.ai ? (
             <div key={i} className="bubble bot">
+              {m.ai.searchUnavailable && (
+                <div className="aiWarn">Live Google search isn’t available on the free plan right now — this answer is general. Check the official sites for current openings.</div>
+              )}
               <Markdown text={m.ai.text} />
               {m.ai.sources.length > 0 && (
                 <div className="botLinks">

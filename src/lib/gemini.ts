@@ -18,11 +18,28 @@ export interface GeminiReply {
   text: string
   sources: { title: string; uri: string }[]
   searchHtml?: string
+  /** Search grounding failed (usually the free quota), so this answer is from general knowledge. */
+  searchUnavailable?: boolean
 }
 
 let cachedModel: string | null = null
 
 export async function askGemini(question: string, context: string, history: Content[], search: boolean): Promise<GeminiReply> {
+  if (!search) return ask(question, context, history, false)
+  try {
+    return await ask(question, context, history, true)
+  } catch (err) {
+    // Google Search grounding has a much smaller free allowance; answer without it.
+    const msg = String((err as Error)?.message ?? err)
+    if (!isQuota(msg) && !isBusy(msg)) throw err
+    const note =
+      'NOTE: live Google Search is not available right now. Answer from general knowledge, say clearly that you could not check today’s listings, and point the user to the official recruitment websites (FPSC, PPSC, SPSC, KPPSC, BPSC, NTS, Pakistan Railways, armed forces) to see current openings.'
+    const reply = await ask(question, `${context}\n\n${note}`, history, false)
+    return { ...reply, searchUnavailable: true }
+  }
+}
+
+async function ask(question: string, context: string, history: Content[], search: boolean): Promise<GeminiReply> {
   const ai = getAI(app, { backend: new GoogleAIBackend() })
   let stored: string | null = null
   try {
@@ -61,13 +78,14 @@ export async function askGemini(question: string, context: string, history: Cont
       const msg = String((err as Error)?.message ?? err)
       // Move on to the next model when this one is missing or overloaded;
       // anything else (not enabled, quota, offline) won't be fixed by another model.
-      if (!isUnavailable(msg) && !isBusy(msg)) break
+      if (!isUnavailable(msg) && !isBusy(msg) && !isQuota(msg)) break
     }
   }
   throw friendly(lastErr)
 }
 
 const isUnavailable = (m: string) => /not.?found|404|unsupported|not supported|does not exist/i.test(m)
+const isQuota = (m: string) => /quota|\b429\b|\[429|RESOURCE_EXHAUSTED|rate limit/i.test(m)
 const isBusy = (m: string) => /high demand|overloaded|unavailable|\[50[0-9]|\b50[0-9]\b|try again later/i.test(m)
 
 function friendly(err: unknown): Error {
@@ -76,7 +94,7 @@ function friendly(err: unknown): Error {
   if (isBusy(msg)) return new Error('Gemini is very busy right now (Google’s servers are under high demand). Please try again in a minute, or use Offline mode.' + detail)
   if (/api-not-enabled|has not been used|is disabled|SERVICE_DISABLED|PERMISSION_DENIED|\b403\b/i.test(msg))
     return new Error('Gemini is not switched on yet. In Firebase console open AI Logic → Get started → Gemini Developer API.' + detail)
-  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error('The free Gemini limit is used up for now. Try again later, or use Offline mode.' + detail)
+  if (isQuota(msg)) return new Error('The free Gemini limit is used up for now. Try again later, or use Offline mode.' + detail)
   if (/network|fetch|Failed to fetch/i.test(msg)) return new Error('No internet connection.')
   return new Error(`Gemini error: ${msg.slice(0, 200)}`)
 }
