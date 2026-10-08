@@ -49,6 +49,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [showSettings, setShowSettings] = useState(false)
   // Amounts start hidden every time the app opens, so nobody nearby sees them.
   const [hidden, setHidden] = useState(true)
+  const [askPin, setAskPin] = useState(false)
   setAmountsHidden(hidden)
   const stored = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`)
   const settings: Settings = { ...stored.data, rates: { ...DEFAULT_RATES, ...stored.data?.rates } }
@@ -143,7 +144,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           </div>
           <button
             className={`privacyBtn ${hidden ? '' : 'on'}`}
-            onClick={() => setHidden((h) => !h)}
+            onClick={() => (hidden ? setAskPin(true) : setHidden(true))}
             title={hidden ? 'Show amounts' : 'Hide amounts'}
           >
             {hidden ? '👁 Show amounts' : '🙈 Hide amounts'}
@@ -174,6 +175,30 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             />
           ))}
       </main>
+
+      {askPin && (
+        <div
+          className="overlay centered"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAskPin(false)
+          }}
+        >
+          <div className="pinModal">
+            <PinGate
+              pinHash={settings.pinHash}
+              hint={settings.pinHash ? 'Enter your PIN to show amounts' : undefined}
+              onUnlock={() => {
+                setHidden(false)
+                setAskPin(false)
+              }}
+              onCreate={(pinHash) => mergeDoc(settingsDoc(uid), { pinHash })}
+            />
+            <button className="btnGhost full" onClick={() => setAskPin(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSettings && (
         <SettingsSheet

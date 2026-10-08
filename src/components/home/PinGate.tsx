@@ -6,7 +6,9 @@ export function PinGate({
   pinHash,
   onUnlock,
   onCreate,
+  hint: customHint,
 }: {
+  hint?: string
   pinHash?: string
   onUnlock: () => void
   onCreate: (hash: string) => Promise<void>
@@ -18,7 +20,7 @@ export function PinGate({
   const [shake, setShake] = useState(false)
 
   const title = creating ? (first ? 'Confirm your PIN' : 'Create a PIN') : 'Enter PIN'
-  const hint = creating ? '4 to 6 digits. Home Accounts will only open with this PIN.' : 'Home Accounts are locked'
+  const hint = customHint ?? (creating ? '4 to 6 digits. Needed to open Home Accounts and to show amounts.' : 'Home Accounts are locked')
 
   function fail(msg: string) {
     setError(msg)
