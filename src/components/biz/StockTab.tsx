@@ -5,7 +5,7 @@ import { stockCol, stockLogCol } from '../../lib/paths'
 import { allByDate, useLiveQuery } from '../../hooks/useData'
 import { rs, shortDate, sum, today } from '../../lib/format'
 import { STOCK_CATEGORIES, STOCK_UNITS } from '../../lib/catalog'
-import { addStock, batchesOf, isLow, takeStock } from '../../lib/stock'
+import { addStock, batchesOf, deleteBatch, isLow, takeStock } from '../../lib/stock'
 import { SellSheet } from './SellSheet'
 import { Card, Chips, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
 import { Sheet } from '../ui/Sheet'
@@ -173,6 +173,7 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today())
   const [confirmDel, setConfirmDel] = useState(false)
+  const [delBatch, setDelBatch] = useState<number | null>(null)
 
   if (mode === 'edit') return <ProductForm uid={uid} edit={p} onClose={() => setMode('view')} />
   if (mode === 'sell') return <SellSheet uid={uid} products={[p]} date={today()} onClose={() => setMode('view')} />
@@ -258,6 +259,26 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
                 {b.qty} {p.unit} · cost {rs(b.cost)} · sell {rs(b.sale ?? p.salePrice)}
               </b>
               <span className="statHint">{b.date ? shortDate(b.date) : ''}</span>
+              {delBatch === i ? (
+                <span className="batchDel">
+                  <button
+                    className="btnDanger"
+                    onClick={async () => {
+                      await deleteBatch(uid, p, i)
+                      setDelBatch(null)
+                    }}
+                  >
+                    Delete {b.qty} {p.unit}?
+                  </button>
+                  <button className="btnGhost" onClick={() => setDelBatch(null)}>
+                    No
+                  </button>
+                </span>
+              ) : (
+                <button className="batchTrash" title="Delete this stock" onClick={() => setDelBatch(i)}>
+                  🗑️
+                </button>
+              )}
             </div>
           ))}
         </div>

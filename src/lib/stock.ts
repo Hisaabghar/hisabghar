@@ -92,3 +92,23 @@ export async function takeStock(uid: string, p: { id: string; name: string }, qt
   await log(uid, p, -qty, reason, { unitCost: cost / qty, ...extra })
   return cost
 }
+
+/** Deletes one stock batch (e.g. entered by mistake) and takes its quantity out of stock. */
+export async function deleteBatch(uid: string, p: { id: string; name: string }, index: number) {
+  const ref = doc(stockCol(uid), p.id)
+  const removed = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref)
+    const cur = snap.data() as Product
+    const batches = batchesOf(cur).map((b) => ({ ...b, sale: b.sale ?? cur.salePrice }))
+    const [gone] = batches.splice(index, 1)
+    if (!gone) return null
+    tx.update(ref, {
+      batches,
+      qty: Math.max(0, (cur.qty ?? 0) - gone.qty),
+      costPrice: batches[0]?.cost ?? cur.costPrice,
+      salePrice: batches[0]?.sale ?? cur.salePrice,
+    })
+    return gone
+  })
+  if (removed) await log(uid, p, -removed.qty, 'adjust', { unitCost: removed.cost, note: 'Stock batch deleted' })
+}

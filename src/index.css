@@ -2250,9 +2250,9 @@ button {
   gap: 6px;
   margin-bottom: 12px;
 }
-.batchList div {
+.batchList > div {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 10px;
   align-items: center;
   font-size: 13px;
@@ -2260,7 +2260,7 @@ button {
   border-radius: 10px;
   background: var(--surface-2);
 }
-.batchList div.cur {
+.batchList > div.cur {
   border: 1px solid var(--brand-2);
 }
 .waBtn {
@@ -2403,4 +2403,25 @@ button {
 .profitEach.neg {
   background: var(--out-soft);
   color: var(--out-text);
+}
+
+.batchTrash {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 4px;
+  opacity: 0.7;
+}
+.batchTrash:hover {
+  opacity: 1;
+}
+.batchDel {
+  display: flex;
+  gap: 6px;
+}
+.batchDel button {
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  flex: 0 0 auto;
 }
