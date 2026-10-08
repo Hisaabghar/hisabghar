@@ -2425,3 +2425,11 @@ button {
   font-size: 12px !important;
   flex: 0 0 auto;
 }
+
+.authLogo {
+  width: 72px;
+  height: 72px;
+  display: block;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 10px 20px rgba(15, 118, 110, 0.3));
+}

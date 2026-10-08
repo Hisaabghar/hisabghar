@@ -20,7 +20,7 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
   return (
     <div className="authWrap">
       <div className="authCard">
-        <div className="mark">MK</div>
+        <img className="authLogo" src="/favicon.svg" alt="Mera Khata" />
         <div className="authTitle">Mera Khata</div>
         <div className="authSubtitle">Home budget and shop accounts in one place — synced on all your devices.</div>
         {error && <div className="errorBanner">{error}</div>}
