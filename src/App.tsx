@@ -1,217 +1,80 @@
 import { useState } from 'react'
 import { useAuth } from './hooks/useAuth'
-import { useAccounts } from './hooks/useAccounts'
-import { useTransactions } from './hooks/useTransactions'
+import { useLiveDoc } from './hooks/useData'
+import { settingsDoc } from './lib/paths'
+import { DEFAULT_RATES } from './lib/catalog'
+import type { Settings } from './types'
 import { AuthScreen } from './components/AuthScreen'
-import { Ledger } from './components/Ledger'
-import { NewAccountModal } from './components/modals/NewAccountModal'
-import { AccMenuModal } from './components/modals/AccMenuModal'
-import { RenameAccountModal } from './components/modals/RenameAccountModal'
-import { ConfirmDeleteAccountModal } from './components/modals/ConfirmDeleteAccountModal'
-import { NewTxnModal } from './components/modals/NewTxnModal'
-import { TxnDetailModal } from './components/modals/TxnDetailModal'
-import type { Transaction, TxnDraft, TxnType } from './types'
-import { balanceOf, fmt } from './lib/txnUtils'
-import { getVoiceNoteUrl, uploadVoiceNote } from './lib/voiceNotes'
-
-type Modal =
-  | { kind: 'newAccount' }
-  | { kind: 'accMenu' }
-  | { kind: 'renameAcc' }
-  | { kind: 'confirmDeleteAcc' }
-  | { kind: 'newTxn'; draft: TxnDraft }
-  | { kind: 'txnDetail'; txnId: string }
-  | null
+import { HomeSection } from './components/home/HomeSection'
+import { PinGate } from './components/home/PinGate'
+import { BizSection } from './components/biz/BizSection'
+import { SettingsSheet } from './components/SettingsSheet'
+import { mergeDoc } from './hooks/useData'
 
 function App() {
   const auth = useAuth()
-
-  if (auth.loading) {
-    return <div className="loadingScreen">Loading…</div>
-  }
-  if (!auth.user) {
-    return <AuthScreen auth={auth} />
-  }
-  return <LedgerApp userId={auth.user.id} onSignOut={auth.signOut} />
+  if (auth.loading) return <div className="loadingScreen">Mera Khata khul raha hai…</div>
+  if (!auth.user) return <AuthScreen auth={auth} />
+  return <Main uid={auth.user.id} email={auth.user.email} onSignOut={auth.signOut} />
 }
 
-function LedgerApp({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
-  const accountsState = useAccounts(userId)
-  const txnsState = useTransactions(userId, accountsState.activeAccountId)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [modal, setModal] = useState<Modal>(null)
+type Section = 'home' | 'biz'
 
-  const { accounts, activeAccountId, setActiveAccountId } = accountsState
-  const activeAccount = accounts.find((a) => a.id === activeAccountId)
-
-  if (accountsState.loading || !activeAccount) {
-    return <div className="loadingScreen">Setting up your ledger…</div>
-  }
-
-  const activeTxns = txnsState.txnsFor(activeAccountId)
-  const totalAll = accounts.reduce((sum, a) => sum + balanceOf(txnsState.txnsFor(a.id)), 0)
-
-  function switchAccount(id: string) {
-    setSearchQuery('')
-    setActiveAccountId(id)
-  }
-
-  async function submitTxn(draft: TxnDraft, voiceBlob: Blob | null) {
-    const amt = parseFloat(draft.amount)
-    if (!amt || amt <= 0 || !activeAccountId) return
-    let voiceNoteUrl: string | null = null
-    if (voiceBlob) {
-      voiceNoteUrl = await uploadVoiceNote(userId, voiceBlob)
-    }
-    await txnsState.addTransaction(activeAccountId, {
-      type: draft.type,
-      amount: amt,
-      category: draft.category.trim() || (draft.type === 'in' ? 'Received' : 'Expense'),
-      note: draft.note.trim(),
-      voiceNoteUrl,
-    })
-    setModal(null)
-  }
-
-  async function playVoiceFromList(txn: Transaction) {
-    if (!txn.voiceNoteUrl) return
-    try {
-      const url = await getVoiceNoteUrl(txn.voiceNoteUrl)
-      new Audio(url).play()
-    } catch {
-      // ignore playback failure
-    }
-  }
-
-  function openNewTxn(type: TxnType) {
-    setModal({ kind: 'newTxn', draft: { type, amount: '', category: '', note: '' } })
-  }
-
-  async function handleDeleteTxn(id: string) {
-    if (!activeAccountId) return
-    await txnsState.deleteTransaction(activeAccountId, id)
-    setModal(null)
-  }
-
-  async function handleDeleteAccount() {
-    if (!activeAccountId) return
-    const ok = await accountsState.deleteAccount(activeAccountId)
-    if (ok) txnsState.purgeAccount(activeAccountId)
-    setModal(null)
-  }
-
-  const selectedTxn = modal?.kind === 'txnDetail' ? activeTxns.find((t) => t.id === modal.txnId) : null
-  const combinedError = accountsState.error || txnsState.error
+function Main({ uid, email, onSignOut }: { uid: string; email: string | null; onSignOut: () => void }) {
+  const [section, setSection] = useState<Section>('biz')
+  const [unlocked, setUnlocked] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const stored = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`)
+  const settings: Settings = { ...stored.data, rates: { ...DEFAULT_RATES, ...stored.data?.rates } }
 
   return (
     <div className="app">
-      <div className="header">
+      <header className="header">
         <div className="brand">
-          <div className="mark">L</div>
+          <div className="mark">MK</div>
           <div>
-            <div className="title">Ledger</div>
-            <div className="subtitle">your money, your voice</div>
+            <div className="title">Mera Khata</div>
+            <div className="subtitle">Ghar aur dukaan ka hisab</div>
           </div>
         </div>
-        <button className="iconBtn" onClick={onSignOut} title="Sign out" aria-label="Sign out">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <path d="M16 17l5-5-5-5" />
-            <path d="M21 12H9" />
-          </svg>
+        <button className="iconBtn" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+          ⚙️
+        </button>
+      </header>
+
+      <div className="sectionSwitch">
+        <button className={section === 'home' ? 'active' : ''} onClick={() => setSection('home')}>
+          🔒 Ghar ka Hisab
+        </button>
+        <button className={section === 'biz' ? 'active' : ''} onClick={() => setSection('biz')}>
+          🏪 Dukaan / Business
         </button>
       </div>
 
-      <div className="hero">
-        <div className="totalLabel">Total balance</div>
-        <div className="totalAmt">
-          <span className="cur">Rs</span>
-          {fmt(totalAll)}
-        </div>
-        <div className="heroMeta">
-          <span className="heroChip">
-            {accounts.length} {accounts.length === 1 ? 'account' : 'accounts'}
-          </span>
-        </div>
-      </div>
+      {section === 'biz' && <BizSection uid={uid} settings={settings} />}
 
-      {combinedError && <div className="errorBanner">{combinedError}</div>}
-
-      <div className="tabsRow">
-        {accounts.map((a) => (
-          <div
-            key={a.id}
-            className={`tab ${a.id === activeAccountId ? 'active' : ''}`}
-            onClick={() => switchAccount(a.id)}
-          >
-            {a.name}
-          </div>
+      {section === 'home' &&
+        (stored.loading ? (
+          <div className="loadingScreen small">…</div>
+        ) : unlocked ? (
+          <HomeSection uid={uid} onLock={() => setUnlocked(false)} />
+        ) : (
+          <PinGate
+            pinHash={settings.pinHash}
+            onUnlock={() => setUnlocked(true)}
+            onCreate={(pinHash) => mergeDoc(settingsDoc(uid), { pinHash })}
+          />
         ))}
-        <div className="tab addTab" onClick={() => setModal({ kind: 'newAccount' })}>
-          + New
-        </div>
-      </div>
 
-      <Ledger
-        account={activeAccount}
-        allTxns={activeTxns}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onOpenMenu={() => setModal({ kind: 'accMenu' })}
-        onOpenNewTxn={openNewTxn}
-        onOpenTxnDetail={(id) => setModal({ kind: 'txnDetail', txnId: id })}
-        onPlayVoice={playVoiceFromList}
-      />
-
-      <button className="fab" onClick={() => openNewTxn('out')}>
-        <span className="plus">+</span> New entry
-      </button>
-
-      {modal?.kind === 'newAccount' && (
-        <NewAccountModal
-          onClose={() => setModal(null)}
-          onCreate={async (name) => {
-            await accountsState.addAccount(name)
-            setModal(null)
-          }}
+      {showSettings && (
+        <SettingsSheet
+          uid={uid}
+          email={email}
+          settings={settings}
+          onClose={() => setShowSettings(false)}
+          onSignOut={onSignOut}
+          onPinReset={() => setUnlocked(false)}
         />
-      )}
-
-      {modal?.kind === 'accMenu' && (
-        <AccMenuModal
-          accountName={activeAccount.name}
-          onClose={() => setModal(null)}
-          onRename={() => setModal({ kind: 'renameAcc' })}
-          onDelete={() => setModal({ kind: 'confirmDeleteAcc' })}
-        />
-      )}
-
-      {modal?.kind === 'renameAcc' && (
-        <RenameAccountModal
-          currentName={activeAccount.name}
-          onClose={() => setModal(null)}
-          onSave={async (name) => {
-            await accountsState.renameAccount(activeAccount.id, name)
-            setModal(null)
-          }}
-        />
-      )}
-
-      {modal?.kind === 'confirmDeleteAcc' && (
-        <ConfirmDeleteAccountModal
-          accountName={activeAccount.name}
-          entryCount={activeTxns.length}
-          onClose={() => setModal(null)}
-          onConfirm={handleDeleteAccount}
-        />
-      )}
-
-      {modal?.kind === 'newTxn' && (
-        <NewTxnModal initialDraft={modal.draft} onClose={() => setModal(null)} onSave={submitTxn} />
-      )}
-
-      {modal?.kind === 'txnDetail' && selectedTxn && (
-        <TxnDetailModal txn={selectedTxn} onClose={() => setModal(null)} onDelete={() => handleDeleteTxn(selectedTxn.id)} />
       )}
     </div>
   )

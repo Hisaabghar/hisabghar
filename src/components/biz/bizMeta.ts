@@ -1,0 +1,63 @@
+import type { BizEntry, BizKind, DayOpening } from '../../types'
+import { rs, sum } from '../../lib/format'
+
+export const KIND_LABEL: Record<BizKind, string> = {
+  wallet: 'Easypaisa / JazzCash',
+  load: 'Load',
+  copy: 'Photocopy / Print',
+  acc: 'Mobile accessories',
+  online: 'Online kaam',
+}
+export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '🪪' }
+
+export const WALLET_LABEL = { easypaisa: 'Easypaisa', jazzcash: 'JazzCash' } as const
+
+export function entryTitle(e: BizEntry): string {
+  switch (e.kind) {
+    case 'wallet':
+      return `${WALLET_LABEL[e.wallet ?? 'easypaisa']} — ${e.dir === 'withdraw' ? 'Nikala' : 'Bheja'}`
+    case 'load':
+      return `${e.network} load`
+    case 'copy':
+      return `${e.copyType} × ${e.qty}`
+    case 'acc':
+      return `${e.item}${e.qty && e.qty > 1 ? ` × ${e.qty}` : ''}`
+    case 'online':
+      return e.service ?? 'Online kaam'
+  }
+}
+
+export function entrySub(e: BizEntry): string | undefined {
+  const parts: string[] = []
+  if (e.kind === 'online' && e.customer) parts.push(e.customer)
+  if (e.note) parts.push(e.note)
+  if (e.kind === 'wallet') parts.push(`Commission ${rs(e.profit)}`)
+  else if (e.kind !== 'copy') parts.push(`Profit ${rs(e.profit)}`)
+  return parts.join(' · ') || undefined
+}
+
+/** Cash that came into (or left) the drawer because of this entry. */
+export function cashEffect(e: BizEntry): number {
+  switch (e.kind) {
+    case 'wallet':
+      return (e.dir === 'withdraw' ? -e.amount : e.amount) + e.profit
+    case 'online':
+      return e.profit // fee received minus what was paid out (challan etc.)
+    default:
+      return e.amount
+  }
+}
+
+export function walletClosing(entries: BizEntry[], opening: DayOpening) {
+  const w = entries.filter((e) => e.kind === 'wallet')
+  const delta = (name: 'easypaisa' | 'jazzcash') =>
+    sum(
+      w.filter((e) => e.wallet === name),
+      (e) => (e.dir === 'withdraw' ? e.amount : -e.amount),
+    )
+  return {
+    cash: opening.cash + sum(entries, cashEffect),
+    easypaisa: opening.easypaisa + delta('easypaisa'),
+    jazzcash: opening.jazzcash + delta('jazzcash'),
+  }
+}

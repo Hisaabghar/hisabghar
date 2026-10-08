@@ -1,29 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 
 export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setBusy(true)
-    try {
-      if (mode === 'signIn') {
-        await auth.signIn(email, password)
-      } else {
-        await auth.signUp(email, password)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function onGoogle() {
     setError(null)
@@ -31,7 +11,7 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
     try {
       await auth.signInWithGoogle()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Kuch masla hua, dobara koshish karein')
     } finally {
       setBusy(false)
     }
@@ -40,9 +20,9 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
   return (
     <div className="authWrap">
       <div className="authCard">
-        <div className="mark">L</div>
-        <div className="authTitle">Ledger</div>
-        <div className="authSubtitle">your money, your voice — sign in to your cashbook</div>
+        <div className="mark">MK</div>
+        <div className="authTitle">Mera Khata</div>
+        <div className="authSubtitle">Ghar aur dukaan ka poora hisab — har device par sync.</div>
         {error && <div className="errorBanner">{error}</div>}
         <button className="btnGoogle" type="button" onClick={onGoogle} disabled={busy}>
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -51,42 +31,8 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
             <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
             <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
           </svg>
-          Continue with Google
+          {busy ? 'Ruk jayein…' : 'Google se login karein'}
         </button>
-        <div className="authDivider">
-          <span>or use email</span>
-        </div>
-        <form onSubmit={onSubmit}>
-          <div className="field">
-            <label>Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-          </div>
-          <div className="field">
-            <label>Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-          <button className="btnPrimary" style={{ width: '100%' }} disabled={busy} type="submit">
-            {busy ? 'Please wait…' : mode === 'signIn' ? 'Sign in' : 'Create account'}
-          </button>
-        </form>
-        <div className="authToggle">
-          {mode === 'signIn' ? (
-            <>
-              New here? <button onClick={() => { setMode('signUp'); setError(null) }}>Create an account</button>
-            </>
-          ) : (
-            <>
-              Already have an account? <button onClick={() => { setMode('signIn'); setError(null) }}>Sign in</button>
-            </>
-          )}
-        </div>
       </div>
     </div>
   )

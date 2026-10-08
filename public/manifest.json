@@ -1,15 +1,35 @@
 {
-  "name": "Ledger",
-  "short_name": "Ledger",
-  "description": "Personal cashbook for tracking your monthly allowance",
+  "name": "Mera Khata",
+  "short_name": "Mera Khata",
+  "description": "Ghar aur dukaan ka hisab",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F3D3E",
-  "theme_color": "#0F3D3E",
+  "background_color": "#0b3b3a",
+  "theme_color": "#0f766e",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }

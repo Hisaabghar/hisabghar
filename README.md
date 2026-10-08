@@ -1,17 +1,21 @@
-# Ledger
+# Mera Khata
 
-A personal cashbook app for tracking a monthly allowance across multiple named accounts,
-with voice notes on transactions. React + TypeScript + Vite, wrapped with Capacitor for
-Android, backed by Firebase (Auth + Firestore + Storage), hosted on Firebase Hosting.
+Ghar aur dukaan ka hisab. React + TypeScript + Vite on Firebase (Google Auth + Firestore),
+hosted on Firebase Hosting (free Spark plan is enough).
+
+- **Ghar ka Hisab** (PIN locked): aamdani, rozana kharcha by category, monthly khulasa
+  (opening, aaye, kharch, bacha) and udhaar per person.
+- **Dukaan / Business** (any day or month): Easypaisa/JazzCash with daily opening and
+  closing balances, load per network, photocopy/print with configurable rates, mobile
+  accessories, and online kaam (NADRA, certificates, license, forms) with pending/done.
 
 ## 1. Set up Firebase
 
 The app uses the Firebase project `mera-khata-30f9b` (set in [`.firebaserc`](.firebaserc)).
 
 1. In the [Firebase console](https://console.firebase.google.com), open the project.
-2. **Authentication → Get started → Sign-in method → Email/Password → Enable.**
+2. **Authentication → Get started → Sign-in method → Google → Enable.**
 3. **Firestore Database → Create database** (production mode, any region).
-4. **Storage → Get started** (needed for voice notes; requires the Blaze plan on new projects).
 5. **Project settings → General → Your apps → Add app → Web (`</>`)**, register it, and
    copy the config values into a `.env` file (see [`.env.example`](.env.example)):
    ```
@@ -27,12 +31,13 @@ The app uses the Firebase project `mera-khata-30f9b` (set in [`.firebaserc`](.fi
 
 All data for a user lives under `users/{uid}` in Firestore:
 
-- `users/{uid}/accounts/{accountId}` — `name`, `createdAt`
-- `users/{uid}/transactions/{txnId}` — `accountId`, `type`, `amount`, `category`, `note`,
-  `voiceNoteUrl`, `createdAt`
+- `home/{id}` — `type` (income/expense), `category`, `amount`, `note`, `date`
+- `loans/{id}` — `person`, `kind` (diya/liya/wapasMila/wapasKiya), `amount`, `date`
+- `biz/{id}` — `kind` (wallet/load/copy/acc/online), `amount`, `profit`, `date`, plus kind fields
+- `days/{YYYY-MM-DD}` — opening `cash`, `easypaisa`, `jazzcash`
+- `meta/settings` — photocopy `rates` and the Ghar ka Hisab `pinHash`
 
-Voice notes are stored at `voice-notes/{uid}/...` in Storage. [`firestore.rules`](firestore.rules)
-and [`storage.rules`](storage.rules) restrict each user to their own data.
+[`firestore.rules`](firestore.rules) restricts each user to their own data.
 
 ## Deploy to Firebase Hosting
 
@@ -43,7 +48,7 @@ On Firebase Hosting no `.env` is needed: the app reads its config from
 npm install -g firebase-tools
 firebase login
 npm run build
-firebase deploy          # hosting + Firestore and Storage rules
+firebase deploy          # hosting + Firestore rules
 ```
 
 The site is served at https://mera-khata-30f9b.web.app.
@@ -112,12 +117,11 @@ a keystore decoded from a secret — ask if you'd like that added once you have 
 
 ```
 src/
-  components/       UI (Ledger card, transaction list, modals)
-  hooks/             useAuth, useAccounts, useTransactions, useVoiceRecorder
-  lib/               Firebase client, Firestore paths, voice note upload, utils
+  components/        home/ (Ghar ka Hisab), biz/ (Dukaan), ui/ (shared kit)
+  hooks/             useAuth, useData (live Firestore queries)
+  lib/               Firebase client, Firestore paths, catalog lists, formatting
   types.ts
 firebase.json        Hosting config + rules file locations
 firestore.rules      Firestore security rules (owner-only)
-storage.rules        Storage security rules (owner-only voice notes)
 android/             Capacitor-generated native Android project
 ```
