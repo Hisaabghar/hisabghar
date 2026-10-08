@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import { useLiveDoc } from './hooks/useData'
 import { settingsDoc } from './lib/paths'
 import { DEFAULT_RATES } from './lib/catalog'
+import { setAmountsHidden } from './lib/format'
 import type { Settings } from './types'
 import { AuthScreen } from './components/AuthScreen'
 import { HOME_TABS, HomeSection, type HomeTab } from './components/home/HomeSection'
@@ -46,6 +47,9 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [homeTab, setHomeTab] = useState<HomeTab>('summary')
   const [unlocked, setUnlocked] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  // Amounts start hidden every time the app opens, so nobody nearby sees them.
+  const [hidden, setHidden] = useState(true)
+  setAmountsHidden(hidden)
   const stored = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`)
   const settings: Settings = { ...stored.data, rates: { ...DEFAULT_RATES, ...stored.data?.rates } }
 
@@ -66,7 +70,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   )
 
   return (
-    <div className="shell">
+    <div className={`shell ${hidden ? 'private' : ''}`}>
       <aside className="sidebar">
         {brand}
         <nav className="nav">
@@ -137,9 +141,13 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             </div>
             <div className="greetSub">{today}</div>
           </div>
-          <div className="greetPill">
-            <span className="liveDot" /> Synced
-          </div>
+          <button
+            className={`privacyBtn ${hidden ? '' : 'on'}`}
+            onClick={() => setHidden((h) => !h)}
+            title={hidden ? 'Show amounts' : 'Hide amounts'}
+          >
+            {hidden ? '👁 Show amounts' : '🙈 Hide amounts'}
+          </button>
         </div>
 
         <div className="sectionSwitch mobileOnly">

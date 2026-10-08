@@ -1,6 +1,16 @@
 import type { Period } from '../types'
 
-export const rs = (n: number) => 'Rs ' + Math.round(n).toLocaleString('en-PK')
+/** Rupees, always visible — for numbers the user is typing into a form. */
+export const rsRaw = (n: number) => 'Rs ' + Math.round(n).toLocaleString('en-PK')
+
+// Privacy mode: when on, every displayed amount is masked. The app shell sets
+// this during render, so all children format with the current value.
+let amountsHidden = false
+export const setAmountsHidden = (v: boolean) => {
+  amountsHidden = v
+}
+
+export const rs = (n: number) => (amountsHidden ? 'Rs ••••' : rsRaw(n))
 
 const pad = (n: number) => String(n).padStart(2, '0')
 export const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`

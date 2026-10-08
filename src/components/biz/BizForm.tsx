@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { BizEntry, BizKind, Wallet } from '../../types'
 import { bizCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
-import { rs } from '../../lib/format'
+import { rsRaw } from '../../lib/format'
 import { arrayUnion } from 'firebase/firestore'
 import { COPY_TYPES, ONLINE_SERVICES } from '../../lib/catalog'
 import { Chips, Field, FormSheet, MoneyInput, Segmented, num } from '../ui/kit'
@@ -196,7 +196,7 @@ export function BizForm({
             </Field>
           </div>
           <div className="totalLine">
-            Total: <b>{rs(q * num(rate))}</b>
+            Total: <b>{rsRaw(q * num(rate))}</b>
           </div>
         </>
       )}
@@ -218,7 +218,7 @@ export function BizForm({
             <MoneyInput value={cost} onChange={setCost} />
           </Field>
           <div className="totalLine">
-            Sale: <b>{rs(q * num(amount))}</b> · Profit: <b>{rs(q * (num(amount) - num(cost)))}</b>
+            Sale: <b>{rsRaw(q * num(amount))}</b> · Profit: <b>{rsRaw(q * (num(amount) - num(cost)))}</b>
           </div>
         </>
       )}
@@ -255,7 +255,7 @@ export function BizForm({
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="03xx-xxxxxxx, tracking no." />
           </Field>
           <div className="totalLine">
-            Profit: <b>{rs(num(amount) - num(cost))}</b>
+            Profit: <b>{rsRaw(num(amount) - num(cost))}</b>
           </div>
         </>
       )}
