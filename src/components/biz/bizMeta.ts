@@ -1,4 +1,4 @@
-import type { BizEntry, BizKind, DayOpening } from '../../types'
+import type { BizEntry, BizKind, CreditEntry, DayOpening, ShopExpense, Till } from '../../types'
 import { rs, sum } from '../../lib/format'
 
 export const KIND_LABEL: Record<BizKind, string> = {
@@ -54,6 +54,7 @@ export function entrySub(e: BizEntry): string | undefined {
 
 /** Cash that came into (or left) the drawer because of this entry. */
 export function cashEffect(e: BizEntry): number {
+  if (e.onCredit) return 0 // sold on udhaar: the money comes later through the customer khata
   switch (e.kind) {
     case 'wallet':
       return (e.dir === 'withdraw' ? -e.amount : e.amount) + e.profit
@@ -64,16 +65,19 @@ export function cashEffect(e: BizEntry): number {
   }
 }
 
-export function walletClosing(entries: BizEntry[], opening: DayOpening) {
+/** Where the day's money should be: opening + shop entries − expenses + udhaar collected. */
+export function walletClosing(entries: BizEntry[], opening: DayOpening, expenses: ShopExpense[] = [], credit: CreditEntry[] = []) {
   const w = entries.filter((e) => e.kind === 'wallet')
+  const out = (till: Till) => sum(expenses.filter((x) => (x.paidFrom ?? 'cash') === till), (x) => x.amount)
+  const collected = (till: Till) => sum(credit.filter((c) => c.kind === 'payment' && (c.paidTo ?? 'cash') === till), (c) => c.amount)
   const delta = (name: 'easypaisa' | 'jazzcash') =>
     sum(
       w.filter((e) => e.wallet === name),
       (e) => (e.dir === 'withdraw' ? e.amount : -e.amount),
     )
   return {
-    cash: opening.cash + sum(entries, cashEffect),
-    easypaisa: opening.easypaisa + delta('easypaisa'),
-    jazzcash: opening.jazzcash + delta('jazzcash'),
+    cash: opening.cash + sum(entries, cashEffect) - out('cash') + collected('cash'),
+    easypaisa: opening.easypaisa + delta('easypaisa') - out('easypaisa') + collected('easypaisa'),
+    jazzcash: opening.jazzcash + delta('jazzcash') - out('jazzcash') + collected('jazzcash'),
   }
 }

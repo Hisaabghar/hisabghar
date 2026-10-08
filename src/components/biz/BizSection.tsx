@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { BizEntry, BizKind, DayOpening, Period, Settings } from '../../types'
 import { bizCol, dayDoc } from '../../lib/paths'
-import { byDateRange, patchItem, removeItem, useLiveDoc, useLiveQuery } from '../../hooks/useData'
+import { allByDate, byDateRange, patchItem, removeItem, useLiveDoc, useLiveQuery } from '../../hooks/useData'
 import { addDays, dailySeries, groupSum, periodRange, rs, shiftPeriod, shortDate, sum, today } from '../../lib/format'
 import { Donut } from '../ui/Donut'
 import { BarChart } from '../ui/BarChart'
@@ -13,13 +13,16 @@ import { OpeningForm } from './OpeningForm'
 import { InvestTab } from './InvestTab'
 import { AddBizSheet } from './AddBizSheet'
 import { StockTab } from './StockTab'
+import { KhataTab, CreditForm, khataBalances } from './KhataTab'
+import { ExpensesTab, ExpenseForm } from './ExpensesTab'
+import { CloseDaySheet } from './CloseDaySheet'
 import { SellSheet } from './SellSheet'
 import { isLow } from '../../lib/stock'
-import { stockCol } from '../../lib/paths'
-import type { Product } from '../../types'
+import { creditCol, shopExpCol, stockCol } from '../../lib/paths'
+import type { CreditEntry, Product, ShopExpense } from '../../types'
 
 /** Built-in pages, a page per user-added category (`c:<name>`), then Investment. */
-export type BizTab = 'dash' | Exclude<BizKind, 'custom'> | 'stock' | 'invest' | `c:${string}`
+export type BizTab = 'dash' | Exclude<BizKind, 'custom'> | 'stock' | 'khata' | 'expenses' | 'invest' | `c:${string}`
 const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'dash', label: 'Dashboard', icon: '📊' },
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
@@ -34,6 +37,8 @@ export function bizTabs(settings: Settings): { id: BizTab; label: string; icon: 
   return [
     ...BASE_TABS,
     ...(settings.customBiz ?? []).map((c) => ({ id: `c:${c.name}` as BizTab, label: c.name, icon: c.icon })),
+    { id: 'khata', label: 'Customer khata', icon: '📒' },
+    { id: 'expenses', label: 'Shop expenses', icon: '🧾' },
     { id: 'invest', label: 'Investment', icon: '🏦' },
   ]
 }
@@ -65,7 +70,10 @@ export function BizSection({
   const customTab = tab.startsWith('c:') ? tab.slice(2) : null
   const stock = useLiveQuery<Product>(stockCol(uid), `stock-${uid}`)
   const lowStock = stock.items.filter(isLow)
-  const noPeriod = tab === 'invest' || tab === 'stock'
+  const noPeriod = tab === 'invest' || tab === 'stock' || tab === 'khata'
+  const [closingDay, setClosingDay] = useState(false)
+  const [addingExp, setAddingExp] = useState(false)
+  const [addingCredit, setAddingCredit] = useState(false)
   const [deleting, setDeleting] = useState<BizEntry | null>(null)
   const [editOpening, setEditOpening] = useState(false)
 
@@ -83,6 +91,17 @@ export function BizSection({
   const of = (k: BizKind) => entries.filter((e) => e.kind === k)
   const profitOf = (k: BizKind) => sum(of(k), (e) => e.profit)
   const totalProfit = sum(entries, (e) => e.profit)
+  const exp = useLiveQuery<ShopExpense>(byDateRange(shopExpCol(uid), from, to), `exp-${uid}-${from}-${to}`)
+  const prevExp = useLiveQuery<ShopExpense>(byDateRange(shopExpCol(uid), pFrom, pTo), `exp-${uid}-${pFrom}-${pTo}`)
+  const credit = useLiveQuery<CreditEntry>(allByDate(creditCol(uid)), `credit-${uid}`)
+  const expTotal = sum(exp.items, (e) => e.amount)
+  const netProfit = totalProfit - expTotal
+  const creditInPeriod = credit.items.filter((c) => c.date >= from && c.date <= to)
+  const customersOwe = sum(
+    khataBalances(credit.items).filter((p) => p.due > 0),
+    (p) => p.due,
+  )
+  const shopName = settings.businessName?.trim() || 'Mera Khata'
   const isDay = period.mode === 'day'
   const newDate = isDay ? period.date : today()
 
@@ -112,7 +131,8 @@ export function BizSection({
     />
   )
 
-  const closing = open ? walletClosing(entries, open) : null
+  const closing = open ? walletClosing(entries, open, exp.items, creditInPeriod) : null
+  const closed = period.mode === 'day' ? opening.data?.closing : undefined
 
   return (
     <>
@@ -125,26 +145,39 @@ export function BizSection({
       </div>
       {tab === 'invest' && <InvestTab uid={uid} />}
       {tab === 'stock' && <StockTab uid={uid} />}
+      {tab === 'khata' && <KhataTab uid={uid} entries={credit.items} shopName={shopName} />}
+      {tab === 'expenses' && (
+        <ExpensesTab uid={uid} expenses={exp.items} grossProfit={totalProfit} isDay={isDay} date={newDate} />
+      )}
       {error && <div className="errorBanner">{error}</div>}
 
       {tab === 'dash' && (
         <>
           <Hero
-            label={isDay ? 'Profit for the day' : 'Profit for the month'}
-            value={totalProfit}
-            delta={{ now: totalProfit, before: sum(prev.items, (e) => e.profit), vs: isDay ? 'previous day' : 'last month' }}
+            label={isDay ? 'Net profit for the day' : 'Net profit for the month'}
+            value={netProfit}
+            delta={{
+              now: netProfit,
+              before: sum(prev.items, (e) => e.profit) - sum(prevExp.items, (e) => e.amount),
+              vs: isDay ? 'previous day' : 'last month',
+            }}
             spark={dailySeries(trend.items, tFrom, tTo, (e) => e.profit).map((d) => d.value)}
           >
+            <HeroStat label="Profit from sales" value={totalProfit} />
+            <HeroStat label="Shop expenses" value={expTotal} />
             <HeroStat label="Entries" value={String(entries.length)} />
-            <HeroStat label="Total handled" value={sum(entries, (e) => e.amount)} />
+            {customersOwe > 0 && <HeroStat label="Customers owe you" value={customersOwe} />}
           </Hero>
           {isDay && (
             <Card
               title="Cash & wallet balances"
               action={
-                <button className="linkBtn" onClick={() => setEditOpening(true)}>
-                  {open ? 'Edit opening' : 'Set opening'}
-                </button>
+                <div className="cardActions">
+                  {closed && <span className="closedBadge">✓ Day closed</span>}
+                  <button className="linkBtn" onClick={() => setEditOpening(true)}>
+                    {open ? 'Edit opening' : 'Set opening'}
+                  </button>
+                </div>
               }
             >
               <StatGrid>
@@ -158,6 +191,9 @@ export function BizSection({
                   automatically with every entry. ›
                 </button>
               )}
+              <button className="closeDayBtn" onClick={() => setClosingDay(true)}>
+                {closed ? '🔁 Re-check the day’s closing' : '🌙 Close the day — count cash & share report'}
+              </button>
             </Card>
           )}
           {lowStock.length > 0 && (
@@ -175,6 +211,8 @@ export function BizSection({
               items={[
                 ...KINDS.map((k) => ({ icon: KIND_ICON[k], label: KIND_LABEL[k], onClick: () => setAdding(k) })),
                 ...customs.map((c) => ({ icon: c.icon, label: c.name, onClick: () => setAdding('custom', c.name) })),
+                { icon: '🧾', label: 'Shop expense', hint: 'Rent, bills, salary', onClick: () => setAddingExp(true) },
+                { icon: '📒', label: 'Udhaar', hint: 'Customer khata', onClick: () => setAddingCredit(true) },
                 { icon: '＋', label: 'New category', hint: 'Add your own business', onClick: () => setAddingBiz(true) },
               ]}
             />
@@ -372,7 +410,7 @@ export function BizSection({
         </>
       )}
 
-      {!noPeriod && (
+      {!noPeriod && tab !== 'expenses' && (
         <Fab
           label="New entry"
           onClick={() =>
@@ -404,6 +442,36 @@ export function BizSection({
           networks={allNetworks(settings.networks)}
           onClose={() => setAdding(null)}
         />
+      )}
+      {addingExp && <ExpenseForm uid={uid} date={newDate} onClose={() => setAddingExp(false)} />}
+      {addingCredit && (
+        <CreditForm
+          uid={uid}
+          initial={{ kind: 'credit' }}
+          names={khataBalances(credit.items).map((p) => p.name)}
+          onClose={() => setAddingCredit(false)}
+        />
+      )}
+      {closingDay && closing && open && (
+        <CloseDaySheet
+          uid={uid}
+          date={period.date}
+          expected={closing}
+          shopName={shopName}
+          existing={closed}
+          summary={{
+            entries: entries.length,
+            sales: sum(entries, (e) => e.amount),
+            profit: totalProfit,
+            expenses: expTotal,
+            collected: sum(creditInPeriod.filter((c) => c.kind === 'payment'), (c) => c.amount),
+            credit: sum(creditInPeriod.filter((c) => c.kind === 'credit'), (c) => c.amount),
+          }}
+          onClose={() => setClosingDay(false)}
+        />
+      )}
+      {closingDay && !open && (
+        <OpeningForm uid={uid} date={period.date} current={ZERO} onClose={() => setClosingDay(false)} />
       )}
       {editOpening && (
         <OpeningForm uid={uid} date={period.date} current={open ?? ZERO} onClose={() => setEditOpening(false)} />

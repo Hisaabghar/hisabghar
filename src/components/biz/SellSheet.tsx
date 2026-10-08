@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Product } from '../../types'
-import { bizCol } from '../../lib/paths'
+import { bizCol, creditCol } from '../../lib/paths'
 import { addItem } from '../../hooks/useData'
 import { rsRaw } from '../../lib/format'
 import { batchesOf, takeFifo, takeStock } from '../../lib/stock'
@@ -25,6 +25,9 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
   const [discMode, setDiscMode] = useState<'rs' | 'pct'>('rs')
   const [disc, setDisc] = useState('')
   const [customer, setCustomer] = useState('')
+  const [phone, setPhone] = useState('')
+  const [pay, setPay] = useState<'now' | 'credit'>('now')
+  const onCredit = pay === 'credit'
   const [date, setDate] = useState(initialDate)
   const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name))
 
@@ -49,9 +52,10 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
     <FormSheet
       title="🛒 New sale"
       onClose={onClose}
-      canSave={valid.length > 0}
+      canSave={valid.length > 0 && (!onCredit || !!customer.trim())}
       onSave={async () => {
         const saleId = newSaleId()
+        const itemsText = valid.map((l) => `${products.find((x) => x.id === l.productId)?.name ?? l.name.trim()} ×${Math.max(1, num(l.qty))}`).join(', ')
         for (const l of valid) {
           const q = Math.max(1, num(l.qty))
           const p = products.find((x) => x.id === l.productId)
@@ -73,8 +77,20 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
             profit: Math.round(amount - cost),
             saleId,
             ...(p ? { productId: p.id } : {}),
+            ...(onCredit ? { onCredit: true } : {}),
+            ...(phone.trim() ? { phone: phone.trim() } : {}),
           })
         }
+        // Udhaar sale: the customer owes the total in their khata.
+        if (onCredit)
+          await addItem(creditCol(uid), {
+            customer: customer.trim(),
+            ...(phone.trim() ? { phone: phone.trim() } : {}),
+            kind: 'credit',
+            amount: Math.round(total),
+            note: itemsText,
+            date,
+          })
       }}
     >
       {lines.map((l, i) => {
@@ -161,7 +177,7 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
           </div>
         )}
         <div className="grand">
-          <span>Total to collect</span>
+          <span>{onCredit ? 'Total (on udhaar)' : 'Total to collect'}</span>
           <b>{rsRaw(total)}</b>
         </div>
         <div className="muted">
@@ -170,14 +186,28 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
         </div>
       </div>
 
+      <Field label="Payment">
+        <Segmented
+          options={[
+            { id: 'now', label: '💵 Paid now' },
+            { id: 'credit', label: '📒 On udhaar' },
+          ]}
+          value={pay}
+          onChange={setPay}
+        />
+      </Field>
       <div className="twoFields">
-        <Field label="Customer (optional)">
-          <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Name / phone" />
+        <Field label={onCredit ? 'Customer name (required)' : 'Customer (optional)'}>
+          <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Name" />
         </Field>
-        <Field label="Date">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <Field label="Phone (optional)">
+          <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+\- ]/g, ''))} placeholder="03xx-xxxxxxx" maxLength={16} />
         </Field>
       </div>
+      {onCredit && <div className="statHint">The total goes into this customer’s khata (Shop → Customer khata); no cash is added to the drawer.</div>}
+      <Field label="Date">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </Field>
     </FormSheet>
   )
 }

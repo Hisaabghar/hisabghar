@@ -2263,3 +2263,109 @@ button {
 .batchList div.cur {
   border: 1px solid var(--brand-2);
 }
+.waBtn {
+  text-decoration: none;
+  background: #e7f8ee !important;
+  color: #128c4a !important;
+  border-color: rgba(18, 140, 74, 0.3) !important;
+}
+.waBtn .qIc {
+  background: #25d366 !important;
+}
+/* ---------- Close day ---------- */
+.closeSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.closeSummary div {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.closeSummary span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.closeSummary b {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+.closeSummary .grand {
+  background: var(--in-soft);
+  color: var(--in-text);
+}
+.closeRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+.closeExp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  color: var(--muted);
+  padding-bottom: 10px;
+  white-space: nowrap;
+}
+.closeExp b {
+  font-size: 13px;
+}
+.ok {
+  color: var(--in-text);
+}
+.over {
+  color: #b45309;
+}
+.short {
+  color: var(--out-text);
+}
+.checkRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 12px;
+}
+.checkRow input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+}
+.waFull {
+  margin-top: 12px;
+  width: 100%;
+}
+.closedBadge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--in-text);
+  background: var(--in-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.closeDayBtn {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+}

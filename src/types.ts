@@ -65,6 +65,8 @@ export interface BizEntry {
   discount?: number
   /** Groups the lines of one sale. */
   saleId?: string
+  /** Sold on udhaar: no money came in yet (it's in the customer khata). */
+  onCredit?: boolean
   // user-defined business (kind 'custom')
   biz?: string
   // online kaam
@@ -85,10 +87,48 @@ export interface InvestEntry {
   createdAt: number
 }
 
+export type Till = 'cash' | 'easypaisa' | 'jazzcash'
+
+/** Money spent to run the shop (rent, bills, salary…). */
+export interface ShopExpense {
+  id: string
+  category: string
+  amount: number
+  note: string
+  paidFrom: Till
+  date: string
+  createdAt: number
+}
+
+/** Customer khata: 'credit' = customer took goods/money on udhaar, 'payment' = customer paid back. */
+export interface CreditEntry {
+  id: string
+  customer: string
+  phone?: string
+  kind: 'credit' | 'payment'
+  amount: number
+  note: string
+  paidTo?: Till
+  date: string
+  createdAt: number
+}
+
+export interface DayClosing {
+  cash: number
+  easypaisa: number
+  jazzcash: number
+  expectedCash: number
+  expectedEasypaisa: number
+  expectedJazzcash: number
+  note: string
+  at: number
+}
+
 export interface DayOpening {
   cash: number
   easypaisa: number
   jazzcash: number
+  closing?: DayClosing
 }
 
 /** One delivery of a product at one cost price. Oldest batches are sold first. */
