@@ -86,10 +86,21 @@ export function HomeSection({
 
       {tab === 'summary' && (
         <>
-          <Hero label={period.mode === 'month' ? 'Balance at end of month' : 'Balance at end of day'} value={closing}>
+          <Hero
+            label={period.mode === 'month' ? 'Balance at end of month' : 'Balance at end of day'}
+            value={closing}
+            spark={period.mode === 'month' ? dailySeries(expense, range[0], range[1], (e) => e.amount).map((d) => d.value) : undefined}
+          >
             <HeroStat label="Opening balance" value={opening} />
             <HeroStat label="Money in" value={incomeSum} />
             <HeroStat label="Spent" value={expenseSum} />
+            {incomeSum > 0 && (
+              <span className="heroChip">
+                {expenseSum <= incomeSum
+                  ? `You saved ${Math.round(((incomeSum - expenseSum) / incomeSum) * 100)}% of your income`
+                  : `Spent ${rs(expenseSum - incomeSum)} more than you earned`}
+              </span>
+            )}
           </Hero>
           <Card title="Quick add">
             <QuickActions
@@ -107,10 +118,10 @@ export function HomeSection({
           )}
           <div className="twoCol">
             <Card title="Where the money went">
-              <Breakdown rows={groupSum(expense, (e) => e.category, (e) => e.amount)} tone="out" />
+              <Breakdown rows={groupSum(expense, (e) => e.category, (e) => e.amount)} tone="out" icons={ICONS} />
             </Card>
             <Card title="Where the money came from">
-              <Breakdown rows={groupSum(income, (e) => e.category, (e) => e.amount)} tone="in" />
+              <Breakdown rows={groupSum(income, (e) => e.category, (e) => e.amount)} tone="in" icons={ICONS} />
             </Card>
           </div>
           <UdhaarSnapshot loans={loans.items} onOpen={() => setTab('udhaar')} />

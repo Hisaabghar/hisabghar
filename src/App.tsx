@@ -15,12 +15,32 @@ function App() {
   const auth = useAuth()
   if (auth.loading) return <div className="loadingScreen">Loading Mera Khata…</div>
   if (!auth.user) return <AuthScreen auth={auth} />
-  return <Main uid={auth.user.id} email={auth.user.email} onSignOut={auth.signOut} />
+  return <Main user={auth.user} onSignOut={auth.signOut} />
 }
 
 type Section = 'home' | 'biz'
 
-function Main({ uid, email, onSignOut }: { uid: string; email: string | null; onSignOut: () => void }) {
+type User = { id: string; email: string | null; name: string | null; photo: string | null }
+
+function greeting() {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
+
+function Avatar({ user }: { user: User }) {
+  const letter = (user.name || user.email || '?').slice(0, 1).toUpperCase()
+  return user.photo ? (
+    <img className="avatar" src={user.photo} alt="" referrerPolicy="no-referrer" />
+  ) : (
+    <span className="avatar">{letter}</span>
+  )
+}
+
+function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+  const uid = user.id
+  const email = user.email
+  const firstName = (user.name ?? '').split(' ')[0]
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const [section, setSection] = useState<Section>('biz')
   const [bizTab, setBizTab] = useState<BizTab>('dash')
   const [homeTab, setHomeTab] = useState<HomeTab>('summary')
@@ -85,17 +105,36 @@ function Main({ uid, email, onSignOut }: { uid: string; email: string | null; on
             <span className="navIc">⚙️</span>
             Settings
           </button>
-          <div className="sideUser">{email}</div>
+          <div className="sideUser">
+            <Avatar user={user} />
+            <div className="sideUserText">
+              <div className="sideUserName">{user.name || 'My account'}</div>
+              <div className="sideUserMail">{email}</div>
+            </div>
+          </div>
         </div>
       </aside>
 
       <main className="app">
         <header className="header mobileOnly">
           {brand}
-          <button className="iconBtn" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
-            ⚙️
+          <button className="avatarBtn" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+            <Avatar user={user} />
           </button>
         </header>
+
+        <div className="greet">
+          <div>
+            <div className="greetTitle">
+              {greeting()}
+              {firstName ? `, ${firstName}` : ''} 👋
+            </div>
+            <div className="greetSub">{today}</div>
+          </div>
+          <div className="greetPill">
+            <span className="liveDot" /> Synced
+          </div>
+        </div>
 
         <div className="sectionSwitch mobileOnly">
           <button className={section === 'home' ? 'active' : ''} onClick={() => setSection('home')}>

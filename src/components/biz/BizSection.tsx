@@ -2,11 +2,12 @@ import { useState } from 'react'
 import type { BizEntry, BizKind, DayOpening, Period, Settings } from '../../types'
 import { bizCol, dayDoc } from '../../lib/paths'
 import { byDateRange, patchItem, removeItem, useLiveDoc, useLiveQuery } from '../../hooks/useData'
-import { addDays, dailySeries, groupSum, periodRange, rs, shortDate, sum, today } from '../../lib/format'
+import { addDays, dailySeries, groupSum, periodRange, rs, shiftPeriod, shortDate, sum, today } from '../../lib/format'
+import { Donut } from '../ui/Donut'
 import { BarChart } from '../ui/BarChart'
 import { COPY_TYPES, NETWORKS, NETWORK_COLORS } from '../../lib/catalog'
 import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, QuickActions, Row, Stat, StatGrid, Tabs } from '../ui/kit'
-import { KIND_ICON, KIND_LABEL, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
+import { KIND_ICON, KIND_LABEL, KIND_SHORT, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
 import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
 
@@ -19,6 +20,10 @@ export const BIZ_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'acc', label: 'Accessories', icon: '🎧' },
   { id: 'online', label: 'Online services', icon: '🪪' },
 ]
+
+const KINDS: BizKind[] = ['wallet', 'load', 'copy', 'acc', 'online']
+
+const timeOf = (ms: number) => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
 const ZERO: DayOpening = { cash: 0, easypaisa: 0, jazzcash: 0 }
 
@@ -43,6 +48,8 @@ export function BizSection({
   // Chart window: the whole month, or the 14 days ending on the chosen day.
   const [tFrom, tTo] = period.mode === 'month' ? [from, to] : [addDays(period.date, -13), period.date]
   const trend = useLiveQuery<BizEntry>(byDateRange(bizCol(uid), tFrom, tTo), `biz-${uid}-${tFrom}-${tTo}`)
+  const [pFrom, pTo] = periodRange(shiftPeriod(period, -1))
+  const prev = useLiveQuery<BizEntry>(byDateRange(bizCol(uid), pFrom, pTo), `biz-${uid}-${pFrom}-${pTo}`)
   const entries = [...items].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
   const opening = useLiveDoc<DayOpening>(period.mode === 'day' ? dayDoc(uid, period.date) : null, `day-${uid}-${period.mode}-${period.date}`)
   const open = period.mode === 'day' ? (opening.data ?? null) : null
@@ -60,7 +67,7 @@ export function BizSection({
       title={entryTitle(e)}
       sub={entrySub(e)}
       amount={rs(e.amount)}
-      amountSub={isDay ? undefined : shortDate(e.date)}
+      amountSub={isDay ? timeOf(e.createdAt) : shortDate(e.date)}
       tone={e.kind === 'wallet' ? undefined : 'in'}
       onClick={() => setDeleting(e)}
       extra={
@@ -94,7 +101,12 @@ export function BizSection({
 
       {tab === 'dash' && (
         <>
-          <Hero label={isDay ? 'Profit for the day' : 'Profit for the month'} value={totalProfit}>
+          <Hero
+            label={isDay ? 'Profit for the day' : 'Profit for the month'}
+            value={totalProfit}
+            delta={{ now: totalProfit, before: sum(prev.items, (e) => e.profit), vs: isDay ? 'previous day' : 'last month' }}
+            spark={dailySeries(trend.items, tFrom, tTo, (e) => e.profit).map((d) => d.value)}
+          >
             <HeroStat label="Entries" value={String(entries.length)} />
             <HeroStat label="Total handled" value={sum(entries, (e) => e.amount)} />
           </Hero>
@@ -122,21 +134,30 @@ export function BizSection({
           )}
           <Card title="Quick add">
             <QuickActions
-              items={(['wallet', 'load', 'copy', 'acc', 'online'] as BizKind[]).map((k) => ({
+              items={KINDS.map((k) => ({
                 icon: KIND_ICON[k],
                 label: KIND_LABEL[k],
                 onClick: () => setAdding(k),
               }))}
             />
           </Card>
-          <Card title={isDay ? 'Profit — last 14 days' : 'Daily profit this month'}>
-            <BarChart data={dailySeries(trend.items, tFrom, tTo, (e) => e.profit)} />
-          </Card>
+          <div className="dashGrid">
+            <Card title={isDay ? 'Profit — last 14 days' : 'Daily profit this month'}>
+              <BarChart data={dailySeries(trend.items, tFrom, tTo, (e) => e.profit)} />
+            </Card>
+            <Card title="Profit by business">
+              <Donut
+                centerLabel="Total profit"
+                slices={KINDS.map((k, i) => ({ label: KIND_SHORT[k], value: profitOf(k), color: `var(--series-${i + 1})` }))}
+              />
+            </Card>
+          </div>
           <StatGrid>
-            {(['wallet', 'load', 'copy', 'acc', 'online'] as BizKind[]).map((k) => (
+            {KINDS.map((k) => (
               <Stat
                 key={k}
-                label={`${KIND_ICON[k]} ${KIND_LABEL[k]}`}
+                icon={KIND_ICON[k]}
+                label={KIND_LABEL[k]}
                 value={profitOf(k)}
                 tone="in"
                 hint={`${of(k).length} entries ›`}

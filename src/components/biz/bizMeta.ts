@@ -8,6 +8,14 @@ export const KIND_LABEL: Record<BizKind, string> = {
   acc: 'Mobile accessories',
   online: 'Online services',
 }
+/** Short names for tight spots such as chart legends. */
+export const KIND_SHORT: Record<BizKind, string> = {
+  wallet: 'Easypaisa/JazzCash',
+  load: 'Load',
+  copy: 'Photocopy',
+  acc: 'Accessories',
+  online: 'Online',
+}
 export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '🪪' }
 
 export const WALLET_LABEL = { easypaisa: 'Easypaisa', jazzcash: 'JazzCash' } as const

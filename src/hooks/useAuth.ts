@@ -51,5 +51,10 @@ export function useAuth() {
     await fbSignOut(auth)
   }
 
-  return { user: user ? { id: user.uid, email: user.email } : null, loading, signInWithGoogle, signOut }
+  return {
+    user: user ? { id: user.uid, email: user.email, name: user.displayName, photo: user.photoURL } : null,
+    loading,
+    signInWithGoogle,
+    signOut,
+  }
 }

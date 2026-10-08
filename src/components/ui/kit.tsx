@@ -2,6 +2,8 @@ import { useState, type ReactNode } from 'react'
 import type { Period } from '../../types'
 import { periodLabel, rs, shiftPeriod, today } from '../../lib/format'
 import { Sheet } from './Sheet'
+import { Sparkline } from './Sparkline'
+import { useCountUp } from '../../hooks/useCountUp'
 
 export function Tabs<T extends string>({
   tabs,
@@ -93,11 +95,41 @@ export function PeriodBar({
   )
 }
 
-export function Hero({ label, value, children }: { label: string; value: number; children?: ReactNode }) {
+export function Hero({
+  label,
+  value,
+  children,
+  delta,
+  spark,
+}: {
+  label: string
+  value: number
+  children?: ReactNode
+  /** Change versus the previous period, e.g. { now: 1200, before: 1000, vs: 'yesterday' }. */
+  delta?: { now: number; before: number; vs: string; goodWhenUp?: boolean }
+  spark?: number[]
+}) {
+  const shown = useCountUp(value)
+  let deltaEl: ReactNode = null
+  if (delta) {
+    const diff = delta.now - delta.before
+    const up = diff >= 0
+    const good = (delta.goodWhenUp ?? true) ? up : !up
+    const pct = delta.before !== 0 ? Math.round((Math.abs(diff) / Math.abs(delta.before)) * 100) : null
+    deltaEl = (
+      <span className={`deltaChip ${diff === 0 ? '' : good ? 'good' : 'bad'}`}>
+        {diff === 0 ? '•' : up ? '▲' : '▼'} {pct !== null ? `${pct}%` : rs(Math.abs(diff))} vs {delta.vs}
+      </span>
+    )
+  }
   return (
     <div className="hero">
-      <div className="heroLabel">{label}</div>
-      <div className={`heroAmt ${value < 0 ? 'neg' : ''}`}>{rs(value)}</div>
+      {spark && <Sparkline values={spark} />}
+      <div className="heroTop">
+        <div className="heroLabel">{label}</div>
+        {deltaEl}
+      </div>
+      <div className={`heroAmt ${value < 0 ? 'neg' : ''}`}>{rs(shown)}</div>
       {children && <div className="heroRow">{children}</div>}
     </div>
   )
@@ -124,7 +156,9 @@ export function Stat({
   hint,
   accent,
   onClick,
+  icon,
 }: {
+  icon?: string
   label: string
   value: number | string
   tone?: 'in' | 'out'
@@ -134,7 +168,14 @@ export function Stat({
 }) {
   return (
     <div className={`stat ${onClick ? 'clickable' : ''}`} style={accent ? { borderLeftColor: accent } : undefined} onClick={onClick}>
-      <div className="statLabel">{label}</div>
+      {icon ? (
+        <div className="statHead">
+          <span className="statIc">{icon}</span>
+          <span className="statLabel">{label}</span>
+        </div>
+      ) : (
+        <div className="statLabel">{label}</div>
+      )}
       <div className={`statVal ${tone ?? ''}`}>{typeof value === 'number' ? rs(value) : value}</div>
       {hint && <div className="statHint">{hint}</div>}
     </div>
@@ -155,7 +196,15 @@ export function Card({ title, action, children }: { title?: string; action?: Rea
   )
 }
 
-export function Breakdown({ rows, tone }: { rows: [string, number][]; tone?: 'in' | 'out' }) {
+export function Breakdown({
+  rows,
+  tone,
+  icons,
+}: {
+  rows: [string, number][]
+  tone?: 'in' | 'out'
+  icons?: Record<string, string>
+}) {
   const max = Math.max(1, ...rows.map((r) => r[1]))
   if (rows.length === 0) return <div className="empty">Nothing recorded for this period yet</div>
   return (
@@ -163,7 +212,10 @@ export function Breakdown({ rows, tone }: { rows: [string, number][]; tone?: 'in
       {rows.map(([label, v]) => (
         <div key={label} className="bdRow">
           <div className="bdTop">
-            <span>{label}</span>
+            <span>
+              {icons?.[label] && <span className="bdIc">{icons[label]}</span>}
+              {label}
+            </span>
             <span className="bdVal">{rs(v)}</span>
           </div>
           <div className="bdTrack">
