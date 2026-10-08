@@ -287,15 +287,18 @@ export function MoneyInput({
   autoFocus?: boolean
   placeholder?: string
 }) {
+  // A text field (not type="number"), so the mouse wheel and arrow spinners
+  // can't change the amount by accident; only digits and one dot are kept.
   return (
     <input
-      type="number"
+      type="text"
       inputMode="decimal"
+      autoComplete="off"
       className="money"
       value={value}
       autoFocus={autoFocus}
       placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onChange(cleanNumber(e.target.value))}
     />
   )
 }
@@ -398,6 +401,14 @@ export function Fab({ label, onClick }: { label: string; onClick: () => void }) 
       <span className="plus">+</span> {label}
     </button>
   )
+}
+
+/** Keeps digits and a single decimal point (also accepts Urdu/Arabic digits). */
+export const cleanNumber = (v: string) => {
+  const western = v.replace(/[٠-٩۰-۹]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d) >= 0 ? '٠١٢٣٤٥٦٧٨٩'.indexOf(d) : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+  const only = western.replace(/,/g, '').replace(/[^\d.]/g, '')
+  const i = only.indexOf('.')
+  return i < 0 ? only : only.slice(0, i + 1) + only.slice(i + 1).replace(/\./g, '')
 }
 
 export const num = (v: string) => {

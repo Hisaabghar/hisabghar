@@ -5,7 +5,7 @@ import { homeCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
 import { rsRaw, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME } from '../../lib/catalog'
-import { Chips, Field, FormSheet, MoneyInput, Segmented, num } from '../ui/kit'
+import { Chips, Field, FormSheet, MoneyInput, Segmented, cleanNumber, num } from '../ui/kit'
 
 const nowTime = () => {
   const d = new Date()
@@ -212,11 +212,12 @@ export function HomeForm({
                     onChange={(e) => setShares((s) => s.map((x, j) => (j === i ? { ...x, person: e.target.value } : x)))}
                   />
                   <input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
+                    autoComplete="off"
                     value={sh.amount}
                     placeholder="Amount"
-                    onChange={(e) => setShares((s) => s.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))}
+                    onChange={(e) => setShares((s) => s.map((x, j) => (j === i ? { ...x, amount: cleanNumber(e.target.value) } : x)))}
                   />
                   {shares.length > 1 && (
                     <button type="button" className="splitDel" onClick={() => setShares((s) => s.filter((_, j) => j !== i))}>
