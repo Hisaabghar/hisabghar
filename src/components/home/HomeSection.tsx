@@ -4,7 +4,7 @@ import { homeCol, loansCol } from '../../lib/paths'
 import { allByDate, removeItem, useLiveQuery } from '../../hooks/useData'
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
-import { HomeForm } from './HomeForm'
+import { HomeForm, ME } from './HomeForm'
 import {
   QuickActions,
   Breakdown,
@@ -36,20 +36,42 @@ const byNewest = (a: HomeEntry, b: HomeEntry) =>
 const DEFAULT_ACCOUNT = 'Cash in pocket'
 const accountOf = (e: HomeEntry) => e.account || DEFAULT_ACCOUNT
 
-/** Balance of every account from all entries up to and including `upTo`. */
-function accountBalances(entries: HomeEntry[], accounts: string[], upTo: string) {
-  const bal = new Map<string, number>(accounts.map((a) => [a, 0]))
-  const add = (a: string, v: number) => bal.set(a, (bal.get(a) ?? 0) + v)
+const ownerOf = (e: HomeEntry) => e.owner || ME
+const isMine = (e: HomeEntry) => ownerOf(e) === ME
+
+/** Money in every account split by whose it is, from all entries up to and including `upTo`. */
+function holdings(entries: HomeEntry[], accounts: string[], upTo: string) {
+  const byAcc = new Map<string, Map<string, number>>(accounts.map((a) => [a, new Map()]))
+  const add = (acc: string, owner: string, v: number) => {
+    const m = byAcc.get(acc) ?? new Map<string, number>()
+    m.set(owner, (m.get(owner) ?? 0) + v)
+    byAcc.set(acc, m)
+  }
   for (const e of entries) {
     if (e.date > upTo) continue
-    if (e.type === 'income') add(accountOf(e), e.amount)
-    else if (e.type === 'expense') add(accountOf(e), -e.amount)
+    const o = ownerOf(e)
+    if (e.type === 'income') add(accountOf(e), o, e.amount)
+    else if (e.type === 'expense') add(accountOf(e), o, -e.amount)
     else {
-      add(accountOf(e), -e.amount)
-      if (e.toAccount) add(e.toAccount, e.amount)
+      add(accountOf(e), o, -e.amount)
+      if (e.toAccount) add(e.toAccount, o, e.amount)
     }
   }
-  return [...bal.entries()]
+  const accountsOut = [...byAcc.entries()].map(([account, m]) => {
+    const total = [...m.values()].reduce((s, v) => s + v, 0)
+    const mine = m.get(ME) ?? 0
+    return { account, total, mine, others: total - mine }
+  })
+  const owners = new Map<string, { total: number; where: [string, number][] }>()
+  for (const [acc, m] of byAcc) {
+    for (const [o, v] of m) {
+      const cur = owners.get(o) ?? { total: 0, where: [] }
+      cur.total += v
+      if (Math.round(v) !== 0) cur.where.push([acc, v])
+      owners.set(o, cur)
+    }
+  }
+  return { accounts: accountsOut, owners }
 }
 
 export function HomeSection({
@@ -66,7 +88,8 @@ export function HomeSection({
   setTab: (t: HomeTab) => void
 }) {
   const [period, setPeriod] = useState<Period>({ mode: 'month', date: today() })
-  const [adding, setAdding] = useState<HomeType | null>(null)
+  const [adding, setAddingState] = useState<{ type: HomeType; owner?: string } | null>(null)
+  const setAdding = (type: HomeType | null, owner?: string) => setAddingState(type ? { type, owner } : null)
   const [deleting, setDeleting] = useState<HomeEntry | null>(null)
 
   const home = useLiveQuery<HomeEntry>(allByDate(homeCol(uid)), `home-${uid}`)
@@ -78,10 +101,13 @@ export function HomeSection({
   const before = all.filter((e) => e.date < range[0])
 
   const accounts = allHomeAccounts([...(settings.homeAccounts ?? []), ...all.flatMap((e) => [e.account ?? '', e.toAccount ?? ''])])
-  const balances = accountBalances(all, accounts, range[1])
-  const opening = sum(before, (e) => (e.type === 'income' ? e.amount : e.type === 'expense' ? -e.amount : 0))
-  const income = inPeriod.filter((e) => e.type === 'income')
-  const expense = inPeriod.filter((e) => e.type === 'expense')
+  const owners = [...new Set([...(settings.owners ?? []), ...all.map((e) => e.owner ?? '').filter(Boolean)])]
+  const held = holdings(all, accounts, range[1])
+  const othersHeld = [...held.owners.entries()].filter(([o, v]) => o !== ME && Math.round(v.total) !== 0)
+  // The summary is about the user's own money; money kept for others is shown separately.
+  const opening = sum(before.filter(isMine), (e) => (e.type === 'income' ? e.amount : e.type === 'expense' ? -e.amount : 0))
+  const income = inPeriod.filter((e) => e.type === 'income' && isMine(e))
+  const expense = inPeriod.filter((e) => e.type === 'expense' && isMine(e))
   const incomeSum = sum(income, (e) => e.amount)
   const expenseSum = sum(expense, (e) => e.amount)
   const closing = opening + incomeSum - expenseSum
@@ -105,7 +131,7 @@ export function HomeSection({
       {tab === 'summary' && (
         <>
           <Hero
-            label={period.mode === 'month' ? 'Balance at end of month' : 'Balance at end of day'}
+            label={period.mode === 'month' ? 'My money at end of month' : 'My money at end of day'}
             value={closing}
             spark={period.mode === 'month' ? dailySeries(expense, range[0], range[1], (e) => e.amount).map((d) => d.value) : undefined}
           >
@@ -122,10 +148,39 @@ export function HomeSection({
           </Hero>
           <Card title={period.date === today() || period.mode === 'month' ? 'My accounts' : 'Account balances'}>
             <StatGrid>
-              {balances.map(([a, v]) => (
-                <Stat key={a} icon={accountIcon(a)} label={a} value={v} tone={v < 0 ? 'out' : undefined} />
+              {held.accounts.map((a) => (
+                <Stat
+                  key={a.account}
+                  icon={accountIcon(a.account)}
+                  label={a.account}
+                  value={a.total}
+                  tone={a.total < 0 ? 'out' : undefined}
+                  hint={Math.round(a.others) !== 0 ? `Mine ${rs(a.mine)} · Others ${rs(a.others)}` : undefined}
+                />
               ))}
             </StatGrid>
+          </Card>
+          <Card
+            title="Whose money is it?"
+            action={
+              <button className="linkBtn" onClick={() => setAdding('income', owners[0] ?? '')}>
+                + Keep money for someone
+              </button>
+            }
+          >
+            <List empty="All the money in your accounts is yours. Use “Keep money for someone” when you hold money for others.">
+              {[[ME, held.owners.get(ME) ?? { total: 0, where: [] }] as const, ...othersHeld].map(([o, v]) => (
+                <Row
+                  key={o}
+                  icon={o === ME ? '🙋' : o.slice(0, 1).toUpperCase()}
+                  title={o === ME ? 'Mine' : `${o}'s money`}
+                  sub={v.where.map(([acc, amt]) => `${acc} ${rs(amt)}`).join(' · ') || 'Nothing held'}
+                  amount={rs(v.total)}
+                  tone={o === ME ? 'in' : undefined}
+                  onClick={o === ME ? undefined : () => setAdding('expense', o)}
+                />
+              ))}
+            </List>
           </Card>
           <Card title="Quick add">
             <QuickActions
@@ -133,6 +188,7 @@ export function HomeSection({
                 { icon: '💼', label: 'Add income', hint: 'Salary, earnings…', onClick: () => setAdding('income') },
                 { icon: '🧾', label: 'Add expense', hint: 'Fuel, friends, bills…', onClick: () => setAdding('expense') },
                 { icon: '🔁', label: 'Transfer', hint: 'Bank → cash, etc.', onClick: () => setAdding('transfer') },
+                { icon: '🤲', label: "Someone's money", hint: 'Uncle, Abu…', onClick: () => setAdding('income', owners[0] ?? '') },
                 { icon: '🤝', label: 'Loans', hint: 'Lent or borrowed', onClick: () => setTab('udhaar') },
               ]}
             />
@@ -182,6 +238,7 @@ export function HomeSection({
                   sub={
                     [
                       e.type === 'income' ? `into ${accountOf(e)}` : e.type === 'expense' ? `from ${accountOf(e)}` : 'Transfer',
+                      isMine(e) ? '' : `${ownerOf(e)}'s money`,
                       e.note,
                     ]
                       .filter(Boolean)
@@ -202,7 +259,16 @@ export function HomeSection({
 
       {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
-      {adding && <HomeForm uid={uid} initialType={adding} accounts={accounts} onClose={() => setAdding(null)} />}
+      {adding && (
+        <HomeForm
+          uid={uid}
+          initialType={adding.type}
+          initialOwner={adding.owner === '' ? undefined : adding.owner}
+          accounts={accounts}
+          owners={owners}
+          onClose={() => setAdding(null)}
+        />
+      )}
       {deleting && (
         <ConfirmDelete
           what={`${deleting.category} — ${rs(deleting.amount)} (${shortDate(deleting.date)})`}

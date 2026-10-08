@@ -12,22 +12,29 @@ const nowTime = () => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const ADD = '+ Add account'
+export const ME = 'Me'
 
-/** Account chips with an inline "add a bank / account" field. */
-function AccountPicker({
+/** Chips plus an inline field that saves a new option to a settings list. */
+function PickerWithAdd({
   uid,
+  field,
+  addLabel,
+  placeholder,
   accounts,
   value,
   onChange,
   exclude,
 }: {
   uid: string
+  field: 'homeAccounts' | 'owners'
+  addLabel: string
+  placeholder: string
   accounts: string[]
   value: string
   onChange: (v: string) => void
   exclude?: string
 }) {
+  const ADD = addLabel
   const [adding, setAdding] = useState<string | null>(null)
   return (
     <>
@@ -46,7 +53,7 @@ function AccountPicker({
             autoFocus
             value={adding}
             onChange={(e) => setAdding(e.target.value)}
-            placeholder="Bank or account name, e.g. HBL, Meezan"
+            placeholder={placeholder}
             maxLength={24}
           />
           <button
@@ -55,7 +62,7 @@ function AccountPicker({
             disabled={!adding.trim()}
             onClick={async () => {
               const name = adding.trim()
-              await mergeDoc(settingsDoc(uid), { homeAccounts: arrayUnion(name) })
+              await mergeDoc(settingsDoc(uid), { [field]: arrayUnion(name) })
               onChange(name)
               setAdding(null)
             }}
@@ -68,20 +75,47 @@ function AccountPicker({
   )
 }
 
+function AccountPicker(props: { uid: string; accounts: string[]; value: string; onChange: (v: string) => void; exclude?: string }) {
+  return (
+    <PickerWithAdd {...props} field="homeAccounts" addLabel="+ Add account" placeholder="Bank or account name, e.g. HBL, Meezan" />
+  )
+}
+
+function OwnerPicker({ uid, owners, value, onChange }: { uid: string; owners: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <PickerWithAdd
+      uid={uid}
+      field="owners"
+      addLabel="+ Add person"
+      placeholder="Whose money? e.g. Uncle, Abu"
+      accounts={[ME, ...owners.filter((o) => o !== ME)]}
+      value={value}
+      onChange={onChange}
+    />
+  )
+}
+
 export function HomeForm({
   uid,
   initialType,
   accounts,
+  owners,
+  initialOwner,
   onClose,
 }: {
   uid: string
   initialType: HomeType
   accounts: string[]
+  owners: string[]
+  initialOwner?: string
   onClose: () => void
 }) {
   const [type, setType] = useState<HomeType>(initialType)
   const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState(initialType === 'income' ? HOME_INCOME[1] : HOME_EXPENSE[0])
+  const [owner, setOwner] = useState(initialOwner ?? ME)
+  const defaultCat = (t: HomeType, o: string) =>
+    t === 'income' ? (o === ME ? "Father's salary" : 'Kept for someone') : o === ME ? HOME_EXPENSE[0] : 'Returned to owner'
+  const [category, setCategory] = useState(defaultCat(initialType, initialOwner ?? ME))
   const [account, setAccount] = useState(accounts[0])
   const [toAccount, setToAccount] = useState(accounts[1] ?? accounts[0])
   const [note, setNote] = useState('')
@@ -90,7 +124,16 @@ export function HomeForm({
   const cats = type === 'income' ? HOME_INCOME : HOME_EXPENSE
   const isTransfer = type === 'transfer'
 
-  const title = type === 'income' ? 'Add income' : type === 'expense' ? 'Add expense' : 'Move money between accounts'
+  const title =
+    type === 'transfer'
+      ? 'Move money between accounts'
+      : owner !== ME
+        ? type === 'income'
+          ? `Money received for ${owner}`
+          : `Money paid out of ${owner}'s share`
+        : type === 'income'
+          ? 'Add income'
+          : 'Add expense'
   const canSave = num(amount) > 0 && (!isTransfer || (toAccount && toAccount !== account))
 
   return (
@@ -105,6 +148,7 @@ export function HomeForm({
           category: isTransfer ? 'Transfer' : category,
           account,
           ...(isTransfer ? { toAccount } : {}),
+          ...(owner !== ME ? { owner } : {}),
           note: note.trim(),
           date,
           time,
@@ -120,11 +164,22 @@ export function HomeForm({
         value={type}
         onChange={(t) => {
           setType(t)
-          if (t !== 'transfer') setCategory(t === 'income' ? HOME_INCOME[1] : HOME_EXPENSE[0])
+          if (t !== 'transfer') setCategory(defaultCat(t, owner))
         }}
       />
       <Field label="Amount (Rs)">
         <MoneyInput value={amount} onChange={setAmount} autoFocus />
+      </Field>
+      <Field label="Whose money?">
+        <OwnerPicker
+          uid={uid}
+          owners={owners}
+          value={owner}
+          onChange={(o) => {
+            setOwner(o)
+            if (!isTransfer) setCategory(defaultCat(type, o))
+          }}
+        />
       </Field>
       <Field label={type === 'income' ? 'Received in' : isTransfer ? 'From account' : 'Paid from'}>
         <AccountPicker uid={uid} accounts={accounts} value={account} onChange={setAccount} />

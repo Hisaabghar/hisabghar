@@ -1,4 +1,4 @@
-export const HOME_INCOME = ['Opening balance', "Father's salary", 'My earnings', 'Gift / Eidi', 'Money returned', 'Other']
+export const HOME_INCOME = ['Opening balance', 'Kept for someone', "Father's salary", 'My earnings', 'Gift / Eidi', 'Money returned', 'Other']
 
 export const HOME_EXPENSE = [
   'Fuel / Bike',
@@ -11,11 +11,14 @@ export const HOME_EXPENSE = [
   'Medicine / Doctor',
   'Fees / Education',
   'Travel',
+  'Returned to owner',
   'Other',
 ]
 
 export const ICONS: Record<string, string> = {
   'Opening balance': '🏁',
+  'Kept for someone': '🤲',
+  'Returned to owner': '↪️',
   "Father's salary": '💼',
   'My earnings': '💰',
   'Gift / Eidi': '🎁',

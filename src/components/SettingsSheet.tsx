@@ -105,6 +105,22 @@ export function SettingsSheet({
         </div>
       </div>
 
+      {(settings.owners ?? []).length > 0 && (
+        <div className="settingsGroup">
+          <div className="settingsHead">People whose money you keep</div>
+          <div className="netList">
+            {(settings.owners ?? []).map((n) => (
+              <span key={n} className="netChip custom">
+                {n}
+                <button aria-label={`Remove ${n}`} onClick={() => mergeDoc(settingsDoc(uid), { owners: arrayRemove(n) })}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="settingsGroup">
         <div className="settingsHead">Load networks</div>
         <div className="netList">

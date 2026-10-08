@@ -15,6 +15,8 @@ export interface HomeEntry {
   account?: string
   /** Destination of a transfer. */
   toAccount?: string
+  /** Whose money this is; absent means the user's own. */
+  owner?: string
   createdAt: number
 }
 
@@ -85,5 +87,7 @@ export interface Settings {
   networks?: string[]
   /** Extra personal accounts (banks etc.) on top of cash, Easypaisa and JazzCash. */
   homeAccounts?: string[]
+  /** People whose money the user keeps (uncle, father…). */
+  owners?: string[]
   rates: Record<string, number>
 }
