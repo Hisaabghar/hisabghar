@@ -68,14 +68,18 @@ export function Ledger({
 
       <div className="quickAdd">
         <button className="quickBtn" onClick={() => onOpenNewTxn('in')}>
-          + Income
+          <span className="qIc">+</span> Income
         </button>
         <button className="quickBtn secondary" onClick={() => onOpenNewTxn('out')}>
-          − Expense
+          <span className="qIc">−</span> Expense
         </button>
       </div>
 
       <div className="searchRow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
         <input
           type="text"
           placeholder="Search entries…"
@@ -84,9 +88,13 @@ export function Ledger({
         />
       </div>
 
+      <div className="sectionTitle">{q ? 'Search results' : 'Recent entries'}</div>
       <div className="txnList">
         {txns.length === 0 ? (
-          <div className="empty">No entries yet. Tap + to add your first one.</div>
+          <div className="empty">
+            <div className="emptyIc">{q ? '🔍' : '🧾'}</div>
+            {q ? 'No matching entries.' : 'No entries yet. Tap + to add your first one.'}
+          </div>
         ) : (
           txns.map((t) => (
             <TxnItem key={t.id} txn={t} onOpen={() => onOpenTxnDetail(t.id)} onPlayVoice={() => onPlayVoice(t)} />

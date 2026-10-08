@@ -30,11 +30,12 @@ export function AuthScreen({ auth }: { auth: ReturnType<typeof useAuth> }) {
   return (
     <div className="authWrap">
       <div className="authCard">
+        <div className="mark">L</div>
         <div className="authTitle">Ledger</div>
         <div className="authSubtitle">your money, your voice — sign in to your cashbook</div>
         {error && <div className="errorBanner">{error}</div>}
         {signedUpMsg && (
-          <div className="errorBanner" style={{ background: '#e4f3ec', borderColor: 'var(--emerald)', color: '#1e6b53' }}>
+          <div className="errorBanner successBanner">
             Account created. Check your email to confirm, then sign in.
           </div>
         )}

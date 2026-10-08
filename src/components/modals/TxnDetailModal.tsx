@@ -34,13 +34,10 @@ export function TxnDetailModal({
       <div className="sheetTitle">
         {iconFor(txn.category, txn.type)} {txn.category}
       </div>
-      <div
-        className={`txnAmt ${txn.type}`}
-        style={{ fontFamily: "'Fraunces',serif", fontSize: 26, fontWeight: 600, marginBottom: 6 }}
-      >
+      <div className={`detailAmt txnAmt ${txn.type}`}>
         {txn.type === 'in' ? '+' : '−'}Rs {fmt(txn.amount)}
       </div>
-      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>{fullDateStr(txn.createdAt)}</div>
+      <div className="detailDate">{fullDateStr(txn.createdAt)}</div>
       {txn.note && (
         <div className="field">
           <label>Note</label>
@@ -50,7 +47,7 @@ export function TxnDetailModal({
       {txn.voiceNoteUrl && (
         <div className="field">
           <label>Voice note</label>
-          <button className="quickBtn secondary" style={{ width: '100%' }} onClick={playVoice} disabled={playing}>
+          <button className="quickBtn plain" style={{ width: '100%' }} onClick={playVoice} disabled={playing}>
             {playing ? '▶ Playing…' : '🔊 Play voice note'}
           </button>
         </div>
