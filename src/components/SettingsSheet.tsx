@@ -26,6 +26,7 @@ export function SettingsSheet({
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(COPY_TYPES.map((t) => [t, String(settings.rates[t] ?? '')])),
   )
+  const [bizName, setBizName] = useState(settings.businessName ?? '')
   const [oldPin, setOldPin] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -35,6 +36,13 @@ export function SettingsSheet({
     await mergeDoc(settingsDoc(uid), { rates: Object.fromEntries(COPY_TYPES.map((t) => [t, num(rates[t])])) })
     setBusy(false)
     setMsg('Rates saved ✓')
+  }
+
+  async function saveName() {
+    setBusy(true)
+    await mergeDoc(settingsDoc(uid), { businessName: bizName.trim() })
+    setBusy(false)
+    setMsg('Business name saved ✓')
   }
 
   async function resetPin() {
@@ -51,6 +59,16 @@ export function SettingsSheet({
   return (
     <Sheet title="Settings" onClose={onClose}>
       {msg && <div className="errorBanner successBanner">{msg}</div>}
+
+      <div className="settingsGroup">
+        <div className="settingsHead">Business name</div>
+        <Field label="Shown at the top of the app">
+          <input value={bizName} onChange={(e) => setBizName(e.target.value)} placeholder="e.g. Aslam Mobile & Photostat" maxLength={40} />
+        </Field>
+        <button className="btnPrimary full" disabled={busy} onClick={saveName}>
+          Save name
+        </button>
+      </div>
 
       <div className="settingsGroup">
         <div className="settingsHead">Photocopy / Print rates (Rs)</div>

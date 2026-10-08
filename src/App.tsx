@@ -49,12 +49,18 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const stored = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`)
   const settings: Settings = { ...stored.data, rates: { ...DEFAULT_RATES, ...stored.data?.rates } }
 
+  const bizName = settings.businessName?.trim()
+  const initials = (bizName || 'Mera Khata')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
   const brand = (
     <div className="brand">
-      <div className="mark">MK</div>
-      <div>
-        <div className="title">Mera Khata</div>
-        <div className="subtitle">Home & shop accounts</div>
+      <div className="mark">{initials}</div>
+      <div className="brandText">
+        <div className="title">{bizName || 'Mera Khata'}</div>
+        <div className="subtitle">{bizName ? 'Powered by Mera Khata' : 'Home & shop accounts'}</div>
       </div>
     </div>
   )

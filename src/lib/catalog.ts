@@ -32,6 +32,25 @@ export const ICONS: Record<string, string> = {
   Other: '📝',
 }
 
+export const INVEST_CATEGORIES = [
+  'Shop setup',
+  'Machine / Printer',
+  'Stock',
+  'Furniture',
+  'Rent advance',
+  'Mobile / Computer',
+  'Other',
+]
+export const INVEST_ICONS: Record<string, string> = {
+  'Shop setup': '🏪',
+  'Machine / Printer': '🖨️',
+  Stock: '📦',
+  Furniture: '🪑',
+  'Rent advance': '🔑',
+  'Mobile / Computer': '💻',
+  Other: '📝',
+}
+
 export const NETWORKS = ['Jazz', 'Zong', 'Telenor', 'Ufone', 'Onic']
 export const NETWORK_COLORS: Record<string, string> = {
   Jazz: '#e11d48',

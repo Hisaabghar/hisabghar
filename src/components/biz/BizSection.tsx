@@ -10,8 +10,9 @@ import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, Q
 import { KIND_ICON, KIND_LABEL, KIND_SHORT, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
 import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
+import { InvestTab } from './InvestTab'
 
-export type BizTab = 'dash' | BizKind
+export type BizTab = 'dash' | BizKind | 'invest'
 export const BIZ_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'dash', label: 'Dashboard', icon: '📊' },
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
@@ -19,6 +20,7 @@ export const BIZ_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
   { id: 'acc', label: 'Accessories', icon: '🎧' },
   { id: 'online', label: 'Online services', icon: '🪪' },
+  { id: 'invest', label: 'Investment', icon: '🏦' },
 ]
 
 const KINDS: BizKind[] = ['wallet', 'load', 'copy', 'acc', 'online']
@@ -95,8 +97,9 @@ export function BizSection({
       </div>
       <div className="pageHead">
         <h1 className="pageTitle desktopOnly">{BIZ_TABS.find((t) => t.id === tab)?.label}</h1>
-        <PeriodBar period={period} onChange={setPeriod} />
+        {tab !== 'invest' && <PeriodBar period={period} onChange={setPeriod} />}
       </div>
+      {tab === 'invest' && <InvestTab uid={uid} />}
       {error && <div className="errorBanner">{error}</div>}
 
       {tab === 'dash' && (
@@ -293,7 +296,7 @@ export function BizSection({
         </>
       )}
 
-      <Fab label="New entry" onClick={() => setAdding(tab === 'dash' ? 'wallet' : tab)} />
+      {tab !== 'invest' && <Fab label="New entry" onClick={() => setAdding(tab === 'dash' ? 'wallet' : tab)} />}
 
       {adding && (
         <BizForm uid={uid} initialKind={adding} date={newDate} rates={settings.rates} onClose={() => setAdding(null)} />

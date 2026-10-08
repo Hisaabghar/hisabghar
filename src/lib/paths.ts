@@ -5,5 +5,6 @@ import { db } from './firebase'
 export const homeCol = (uid: string) => collection(db, 'users', uid, 'home')
 export const loansCol = (uid: string) => collection(db, 'users', uid, 'loans')
 export const bizCol = (uid: string) => collection(db, 'users', uid, 'biz')
+export const investCol = (uid: string) => collection(db, 'users', uid, 'invest')
 export const dayDoc = (uid: string, date: string) => doc(db, 'users', uid, 'days', date)
 export const settingsDoc = (uid: string) => doc(db, 'users', uid, 'meta', 'settings')

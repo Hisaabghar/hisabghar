@@ -55,6 +55,17 @@ export interface BizEntry {
   status?: 'pending' | 'done'
 }
 
+/** Money put into starting or growing the business (machines, stock, setup). */
+export interface InvestEntry {
+  id: string
+  item: string
+  category: string
+  amount: number
+  note: string
+  date: string
+  createdAt: number
+}
+
 export interface DayOpening {
   cash: number
   easypaisa: number
@@ -63,5 +74,6 @@ export interface DayOpening {
 
 export interface Settings {
   pinHash?: string
+  businessName?: string
   rates: Record<string, number>
 }
