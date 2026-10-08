@@ -2390,3 +2390,17 @@ button {
     font-size: 15px;
   }
 }
+
+.profitEach {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--in-soft);
+  color: var(--in-text);
+}
+.profitEach.neg {
+  background: var(--out-soft);
+  color: var(--out-text);
+}

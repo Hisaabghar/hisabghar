@@ -128,7 +128,7 @@ function ProductForm({ uid, edit, onClose }: { uid: string; edit?: Product; onCl
           return
         }
         const ref = await addDoc(stockCol(uid), { ...data, qty: 0, createdAt: Date.now() })
-        if (num(qty) > 0) await addStock(uid, { id: ref.id, name: data.name }, num(qty), num(cost), { reason: 'opening' })
+        if (num(qty) > 0) await addStock(uid, { id: ref.id, name: data.name }, num(qty), num(cost), { reason: 'opening', sale: num(sale) })
       }}
     >
       <Field label="Product name">
@@ -169,6 +169,7 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
   const [qty, setQty] = useState('')
   const batches = batchesOf(p)
   const [cost, setCost] = useState(String(batches.length ? batches[batches.length - 1].cost : p.costPrice))
+  const [sale, setSale] = useState(String(batches.length ? (batches[batches.length - 1].sale ?? p.salePrice) : p.salePrice))
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today())
   const [confirmDel, setConfirmDel] = useState(false)
@@ -184,7 +185,7 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
         onClose={() => setMode('view')}
         canSave={num(qty) > 0}
         onSave={async () => {
-          if (adding) await addStock(uid, p, num(qty), num(cost), { note: note.trim(), date })
+          if (adding) await addStock(uid, p, num(qty), num(cost), { note: note.trim(), date, sale: num(sale) })
           else await takeStock(uid, p, num(qty), 'adjust', { note: note.trim(), date })
         }}
       >
@@ -206,7 +207,18 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
             </Field>
           )}
         </div>
-        {adding && <div className="statHint">New stock is kept separately at its own cost and is sold after the older stock runs out.</div>}
+        {adding && (
+          <div className="twoFields">
+            <Field label="Selling price of this new stock (each)">
+              <MoneyInput value={sale} onChange={setSale} />
+            </Field>
+            <div className="field">
+              <label>Profit each</label>
+              <div className={`profitEach ${num(sale) - num(cost) < 0 ? 'neg' : ''}`}>{rs(num(sale) - num(cost))}</div>
+            </div>
+          </div>
+        )}
+        {adding && <div className="statHint">New stock is kept separately at its own cost and selling price, and is sold after the older stock runs out.</div>}
         <Field label="Note (optional)">
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={adding ? 'e.g. from Hall Road supplier' : 'e.g. broken'} />
         </Field>
@@ -243,7 +255,7 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
             <div key={i} className={i === 0 ? 'cur' : ''}>
               <span>{i === 0 ? 'Selling now (old stock)' : `New stock ${batches.length > 2 ? i : ''}`.trim()}</span>
               <b>
-                {b.qty} {p.unit} @ {rs(b.cost)}
+                {b.qty} {p.unit} · cost {rs(b.cost)} · sell {rs(b.sale ?? p.salePrice)}
               </b>
               <span className="statHint">{b.date ? shortDate(b.date) : ''}</span>
             </div>

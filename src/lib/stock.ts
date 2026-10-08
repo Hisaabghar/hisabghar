@@ -50,16 +50,22 @@ async function log(
 }
 
 /** Adds a delivery as its own batch at its own cost. */
-export async function addStock(uid: string, p: { id: string; name: string }, qty: number, cost: number, extra: { note?: string; date?: string; reason?: StockReason } = {}) {
+export async function addStock(
+  uid: string,
+  p: { id: string; name: string },
+  qty: number,
+  cost: number,
+  extra: { note?: string; date?: string; reason?: StockReason; sale?: number } = {},
+) {
   if (qty <= 0) return
   const ref = doc(stockCol(uid), p.id)
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref)
     const cur = snap.data() as Product
-    const batches = batchesOf(cur)
-    batches.push({ qty, cost, date: extra.date ?? today() })
-    // costPrice always shows the stock that will be sold next (the oldest batch).
-    tx.update(ref, { batches, qty: (cur.qty ?? 0) + qty, costPrice: batches[0].cost })
+    const batches = batchesOf(cur).map((b) => ({ ...b, sale: b.sale ?? cur.salePrice }))
+    batches.push({ qty, cost, sale: extra.sale && extra.sale > 0 ? extra.sale : cur.salePrice, date: extra.date ?? today() })
+    // costPrice/salePrice always show the stock that will be sold next (the oldest batch).
+    tx.update(ref, { batches, qty: (cur.qty ?? 0) + qty, costPrice: batches[0].cost, salePrice: batches[0].sale ?? cur.salePrice })
   })
   await log(uid, p, qty, extra.reason ?? 'purchase', { unitCost: cost, ...extra })
 }
@@ -74,7 +80,13 @@ export async function takeStock(uid: string, p: { id: string; name: string }, qt
     const batches = batchesOf(cur)
     const lastCost = batches.length ? batches[batches.length - 1].cost : cur.costPrice
     const { cost, left } = takeFifo(batches, qty, lastCost)
-    tx.update(ref, { batches: left, qty: (cur.qty ?? 0) - qty, costPrice: left[0]?.cost ?? lastCost })
+    // When the old batch runs out, the next batch's cost and selling price take over.
+    tx.update(ref, {
+      batches: left,
+      qty: (cur.qty ?? 0) - qty,
+      costPrice: left[0]?.cost ?? lastCost,
+      salePrice: left[0]?.sale ?? cur.salePrice,
+    })
     return cost
   })
   await log(uid, p, -qty, reason, { unitCost: cost / qty, ...extra })

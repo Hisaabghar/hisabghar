@@ -135,6 +135,8 @@ export interface DayOpening {
 export interface StockBatch {
   qty: number
   cost: number
+  /** Selling price for this batch; becomes the product's price when it is the oldest. */
+  sale?: number
   date: string
 }
 
