@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { arrayRemove, arrayUnion, deleteField } from 'firebase/firestore'
+import { arrayRemove, arrayUnion } from 'firebase/firestore'
 import type { Settings } from '../types'
 import { settingsDoc } from '../lib/paths'
 import { mergeDoc } from '../hooks/useData'
@@ -28,6 +28,9 @@ export function SettingsSheet({
   )
   const [bizName, setBizName] = useState(settings.businessName ?? '')
   const [oldPin, setOldPin] = useState('')
+  const [pinStep, setPinStep] = useState<'old' | 'new'>('old')
+  const [newPin, setNewPin] = useState('')
+  const [newPin2, setNewPin2] = useState('')
   const [net, setNet] = useState('')
   const [acc, setAcc] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
@@ -47,20 +50,30 @@ export function SettingsSheet({
     setMsg('Business name saved ✓')
   }
 
-  async function resetPin() {
-    if (settings.pinHash && (await sha256(oldPin)) !== settings.pinHash) {
+  async function checkOldPin() {
+    if ((await sha256(oldPin)) !== settings.pinHash) {
       setMsg('Current PIN is incorrect')
       return
     }
-    await mergeDoc(settingsDoc(uid), { pinHash: deleteField() })
+    setMsg(null)
+    setPinStep('new')
+  }
+
+  async function saveNewPin() {
+    if (!/^\d{4,6}$/.test(newPin)) return setMsg('New PIN must be 4 to 6 digits')
+    if (newPin !== newPin2) return setMsg("New PINs don't match")
+    await mergeDoc(settingsDoc(uid), { pinHash: await sha256(newPin) })
     onPinReset()
     setOldPin('')
-    setMsg('PIN removed. You will set a new PIN when you next open Home Accounts.')
+    setNewPin('')
+    setNewPin2('')
+    setPinStep('old')
+    setMsg('PIN changed ✓')
   }
 
   return (
     <Sheet title="Settings" onClose={onClose}>
-      {msg && <div className="errorBanner successBanner">{msg}</div>}
+      {msg && <div className={`errorBanner ${msg.includes('✓') ? 'successBanner' : ''}`}>{msg}</div>}
 
       <div className="settingsGroup">
         <div className="settingsHead">Business name</div>
@@ -175,12 +188,30 @@ export function SettingsSheet({
         <div className="settingsHead">Home Accounts PIN</div>
         {settings.pinHash ? (
           <>
-            <Field label="Enter your current PIN to change it">
-              <input type="password" inputMode="numeric" value={oldPin} onChange={(e) => setOldPin(e.target.value)} placeholder="••••" />
-            </Field>
-            <button className="btnGhost full" onClick={resetPin}>
-              Change PIN
-            </button>
+            {pinStep === 'old' ? (
+              <>
+                <Field label="Step 1: enter your current PIN">
+                  <input type="password" inputMode="numeric" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value)} placeholder="••••" />
+                </Field>
+                <button className="btnGhost full" disabled={oldPin.length < 4} onClick={checkOldPin}>
+                  Next
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="twoFields">
+                  <Field label="Step 2: new PIN">
+                    <input type="password" inputMode="numeric" maxLength={6} autoFocus value={newPin} onChange={(e) => setNewPin(e.target.value)} placeholder="4–6 digits" />
+                  </Field>
+                  <Field label="Confirm new PIN">
+                    <input type="password" inputMode="numeric" maxLength={6} value={newPin2} onChange={(e) => setNewPin2(e.target.value)} placeholder="••••" />
+                  </Field>
+                </div>
+                <button className="btnPrimary full" disabled={newPin.length < 4 || newPin2.length < 4} onClick={saveNewPin}>
+                  Save new PIN
+                </button>
+              </>
+            )}
           </>
         ) : (
           <div className="sheetText">No PIN yet. You will create one when you open Home Accounts.</div>

@@ -50,7 +50,10 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   // Amounts start hidden every time the app opens, so nobody nearby sees them.
   const [hidden, setHidden] = useState(true)
   const [askPin, setAskPin] = useState(false)
-  setAmountsHidden(hidden)
+  // Inside unlocked Home Accounts the PIN was already entered, so amounts show there.
+  const homeOpen = section === 'home' && unlocked
+  const masked = hidden && !homeOpen
+  setAmountsHidden(masked)
   const stored = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`)
   const settings: Settings = { ...stored.data, rates: { ...DEFAULT_RATES, ...stored.data?.rates } }
 
@@ -71,7 +74,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   )
 
   return (
-    <div className={`shell ${hidden ? 'private' : ''}`}>
+    <div className={`shell ${masked ? 'private' : ''}`}>
       <aside className="sidebar">
         {brand}
         <nav className="nav">
@@ -142,13 +145,19 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             </div>
             <div className="greetSub">{today}</div>
           </div>
-          <button
-            className={`privacyBtn ${hidden ? '' : 'on'}`}
-            onClick={() => (hidden ? setAskPin(true) : setHidden(true))}
-            title={hidden ? 'Show amounts' : 'Hide amounts'}
-          >
-            {hidden ? '👁 Show amounts' : '🙈 Hide amounts'}
-          </button>
+          {homeOpen ? (
+            <button className="privacyBtn on" onClick={() => setUnlocked(false)} title="Lock Home Accounts">
+              🔒 Lock
+            </button>
+          ) : (
+            <button
+              className={`privacyBtn ${hidden ? '' : 'on'}`}
+              onClick={() => (hidden ? setAskPin(true) : setHidden(true))}
+              title={hidden ? 'Show amounts' : 'Hide amounts'}
+            >
+              {hidden ? '👁 Show amounts' : '🙈 Hide amounts'}
+            </button>
+          )}
         </div>
 
         <div className="sectionSwitch mobileOnly">
