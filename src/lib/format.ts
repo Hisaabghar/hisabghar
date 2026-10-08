@@ -10,6 +10,8 @@ export const setAmountsHidden = (v: boolean) => {
   amountsHidden = v
 }
 
+export const areAmountsHidden = () => amountsHidden
+
 export const rs = (n: number) => (amountsHidden ? 'Rs ••••' : rsRaw(n))
 
 const pad = (n: number) => String(n).padStart(2, '0')

@@ -285,3 +285,98 @@ export function answer(question: string, data: MentorData): MentorAnswer {
     ],
   }
 }
+
+/** A compact, plain-text summary of the user's figures for the online model. */
+export function buildContext(data: MentorData, now = today()): string {
+  const r = (n: number) => `Rs ${Math.round(n).toLocaleString('en-PK')}`
+  const name = (e: BizEntry) => (e.kind === 'custom' ? (e.biz ?? 'Other') : BIZ_NAMES[e.kind])
+  const block = (label: string, from: string, to: string) => {
+    const list = data.biz.filter((e) => e.date >= from && e.date <= to)
+    if (!list.length) return `${label}: no shop entries.`
+    const parts = groupSum(list, name, (e) => e.profit).map(([k, v]) => `${k} profit ${r(v)}`)
+    const items = groupSum(
+      list.filter((e) => e.kind === 'acc' || e.kind === 'custom'),
+      (e) => e.item || e.biz || 'Other',
+      (e) => e.amount,
+    )
+      .slice(0, 8)
+      .map(([k, v]) => `${k} ${r(v)}`)
+    const loads = groupSum(
+      list.filter((e) => e.kind === 'load'),
+      (e) => e.network ?? 'Other',
+      (e) => e.amount,
+    ).map(([k, v]) => `${k} ${r(v)}`)
+    return [
+      `${label}: ${list.length} entries, handled ${r(sum(list, (e) => e.amount))}, profit ${r(sum(list, (e) => e.profit))} (${parts.join('; ')}).`,
+      items.length ? `  Items sold: ${items.join(', ')}.` : '',
+      loads.length ? `  Load by network: ${loads.join(', ')}.` : '',
+    ]
+      .filter(Boolean)
+      .join('\n')
+  }
+  const [mFrom, mTo] = monthRange(now)
+  const lastMonth = monthRange(toISO(new Date(Number(now.slice(0, 4)), Number(now.slice(5, 7)) - 2, 1)))
+  const days = Array.from({ length: 30 }, (_, i) => addDays(now, -i))
+  const daily = days
+    .map((d) => {
+      const l = data.biz.filter((e) => e.date === d)
+      return l.length ? `${d}: profit ${r(sum(l, (e) => e.profit))}, handled ${r(sum(l, (e) => e.amount))}` : ''
+    })
+    .filter(Boolean)
+  const pending = data.biz.filter((e) => e.kind === 'online' && e.status !== 'done')
+
+  const out = [
+    `MERA KHATA DATA (today is ${now}). Use only this for questions about the user's own accounts.`,
+    '== SHOP ==',
+    block('Today', now, now),
+    block('Yesterday', addDays(now, -1), addDays(now, -1)),
+    block('This month', mFrom, mTo),
+    block('Last month', lastMonth[0], lastMonth[1]),
+    `All time profit: ${r(sum(data.biz, (e) => e.profit))}.`,
+    daily.length ? `Daily (last 30 days):\n  ${daily.join('\n  ')}` : '',
+    `Pending online work: ${pending.length ? pending.map((e) => `${e.service}${e.customer ? ' for ' + e.customer : ''} (${e.date})`).join('; ') : 'none'}.`,
+    '== STOCK ==',
+    data.stock.length
+      ? data.stock.map((s) => `${s.name}: ${s.qty} ${s.unit} (cost ${r(s.costPrice)}, sale ${r(s.salePrice)}${isLow(s) ? ', LOW' : ''})`).join('\n')
+      : 'No products recorded.',
+  ]
+  if (data.home && data.loans) {
+    const bal = new Map<string, number>()
+    for (const e of data.home) {
+      const a = e.account || 'Cash in pocket'
+      if (e.type === 'income') bal.set(a, (bal.get(a) ?? 0) + e.amount)
+      else if (e.type === 'expense') bal.set(a, (bal.get(a) ?? 0) - e.amount)
+      else {
+        bal.set(a, (bal.get(a) ?? 0) - e.amount)
+        if (e.toAccount) bal.set(e.toAccount, (bal.get(e.toAccount) ?? 0) + e.amount)
+      }
+    }
+    const mine = data.home.filter((e) => !e.owner)
+    const spent = groupSum(
+      mine.filter((e) => e.type === 'expense' && e.date >= mFrom && e.date <= mTo),
+      (e) => e.category,
+      (e) => e.amount,
+    )
+    const net = new Map<string, number>()
+    for (const l of data.loans) net.set(l.person, (net.get(l.person) ?? 0) + (l.kind === 'diya' || l.kind === 'wapasKiya' ? 1 : -1) * l.amount)
+    const others = new Map<string, number>()
+    for (const e of data.home.filter((x) => x.owner)) {
+      const v = e.type === 'income' ? e.amount : e.type === 'expense' ? -e.amount : 0
+      others.set(e.owner!, (others.get(e.owner!) ?? 0) + v)
+    }
+    out.push(
+      '== HOME ACCOUNTS ==',
+      `Account balances: ${[...bal].map(([a, v]) => `${a} ${r(v)}`).join(', ') || 'none'}.`,
+      `Money kept for others: ${[...others].filter(([, v]) => Math.round(v)).map(([o, v]) => `${o} ${r(v)}`).join(', ') || 'none'}.`,
+      `Spending this month: ${spent.map(([c, v]) => `${c} ${r(v)}`).join(', ') || 'none'}.`,
+      `Loans (positive = they owe me): ${[...net].filter(([, v]) => Math.round(v)).map(([p, v]) => `${p} ${r(v)}`).join(', ') || 'none'}.`,
+    )
+  } else {
+    out.push('== HOME ACCOUNTS == locked; tell the user to open Home Accounts with their PIN for personal finance questions.')
+  }
+  return out.filter(Boolean).join('\n')
+}
+
+/** Questions that need fresh information from the internet. */
+export const needsSearch = (q: string) =>
+  has(` ${q.toLowerCase()} `, ['job', 'jobs', 'naukri', 'nokri', 'vacanc', 'bharti', 'news', 'khabar', 'rate', 'price', 'qeemat', 'dollar', 'gold', 'weather', 'mausam', 'admission', 'result'])
