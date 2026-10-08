@@ -1,4 +1,4 @@
-export const HOME_INCOME = ["Father's salary", 'My earnings', 'Gift / Eidi', 'Money returned', 'Other']
+export const HOME_INCOME = ['Opening balance', "Father's salary", 'My earnings', 'Gift / Eidi', 'Money returned', 'Other']
 
 export const HOME_EXPENSE = [
   'Fuel / Bike',
@@ -15,6 +15,7 @@ export const HOME_EXPENSE = [
 ]
 
 export const ICONS: Record<string, string> = {
+  'Opening balance': '🏁',
   "Father's salary": '💼',
   'My earnings': '💰',
   'Gift / Eidi': '🎁',
@@ -49,6 +50,21 @@ export const INVEST_ICONS: Record<string, string> = {
   'Rent advance': '🔑',
   'Mobile / Computer': '💻',
   Other: '📝',
+}
+
+export const HOME_ACCOUNTS = ['Cash in pocket', 'Easypaisa', 'JazzCash']
+export const accountIcon = (a: string) =>
+  a === 'Cash in pocket' ? '👛' : a === 'Easypaisa' || a === 'JazzCash' ? '📱' : '🏦'
+
+/** Default accounts plus the user's own, without duplicates. */
+export function allHomeAccounts(extra: string[] = []) {
+  const seen = new Set<string>()
+  return [...HOME_ACCOUNTS, ...extra].filter((n) => {
+    const k = n.trim().toLowerCase()
+    if (!k || seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 }
 
 export const NETWORKS = ['Jazz', 'Zong', 'Telenor', 'Ufone', 'Onic']

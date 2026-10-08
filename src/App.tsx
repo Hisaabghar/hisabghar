@@ -166,7 +166,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           (stored.loading ? (
             <div className="loadingScreen small">…</div>
           ) : unlocked ? (
-            <HomeSection uid={uid} onLock={() => setUnlocked(false)} tab={homeTab} setTab={setHomeTab} />
+            <HomeSection uid={uid} settings={settings} onLock={() => setUnlocked(false)} tab={homeTab} setTab={setHomeTab} />
           ) : (
             <PinGate
               pinHash={settings.pinHash}

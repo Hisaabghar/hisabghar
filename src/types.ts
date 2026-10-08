@@ -1,7 +1,7 @@
 export type Period = { mode: 'day' | 'month'; date: string } // date = YYYY-MM-DD
 
 // ---------- Home accounts ----------
-export type HomeType = 'income' | 'expense'
+export type HomeType = 'income' | 'expense' | 'transfer'
 export interface HomeEntry {
   id: string
   type: HomeType
@@ -9,6 +9,12 @@ export interface HomeEntry {
   amount: number
   note: string
   date: string
+  /** HH:MM the money moved. */
+  time?: string
+  /** Where the money came into or went out of (income/expense), or the source of a transfer. */
+  account?: string
+  /** Destination of a transfer. */
+  toAccount?: string
   createdAt: number
 }
 
@@ -77,5 +83,7 @@ export interface Settings {
   businessName?: string
   /** Extra load networks the user added on top of the built-in ones. */
   networks?: string[]
+  /** Extra personal accounts (banks etc.) on top of cash, Easypaisa and JazzCash. */
+  homeAccounts?: string[]
   rates: Record<string, number>
 }

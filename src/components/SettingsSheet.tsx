@@ -3,7 +3,7 @@ import { arrayRemove, arrayUnion, deleteField } from 'firebase/firestore'
 import type { Settings } from '../types'
 import { settingsDoc } from '../lib/paths'
 import { mergeDoc } from '../hooks/useData'
-import { COPY_TYPES, NETWORKS } from '../lib/catalog'
+import { COPY_TYPES, HOME_ACCOUNTS, NETWORKS } from '../lib/catalog'
 import { sha256 } from '../lib/format'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
@@ -29,6 +29,7 @@ export function SettingsSheet({
   const [bizName, setBizName] = useState(settings.businessName ?? '')
   const [oldPin, setOldPin] = useState('')
   const [net, setNet] = useState('')
+  const [acc, setAcc] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -69,6 +70,39 @@ export function SettingsSheet({
         <button className="btnPrimary full" disabled={busy} onClick={saveName}>
           Save name
         </button>
+      </div>
+
+      <div className="settingsGroup">
+        <div className="settingsHead">Home accounts (cash, wallets, banks)</div>
+        <div className="netList">
+          {HOME_ACCOUNTS.map((n) => (
+            <span key={n} className="netChip">
+              {n}
+            </span>
+          ))}
+          {(settings.homeAccounts ?? []).map((n) => (
+            <span key={n} className="netChip custom">
+              {n}
+              <button aria-label={`Remove ${n}`} onClick={() => mergeDoc(settingsDoc(uid), { homeAccounts: arrayRemove(n) })}>
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="inlineAdd">
+          <input value={acc} onChange={(e) => setAcc(e.target.value)} placeholder="Add a bank, e.g. HBL, Meezan" maxLength={24} />
+          <button
+            className="btnPrimary"
+            disabled={!acc.trim()}
+            onClick={async () => {
+              await mergeDoc(settingsDoc(uid), { homeAccounts: arrayUnion(acc.trim()) })
+              setAcc('')
+              setMsg('Account added ✓')
+            }}
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       <div className="settingsGroup">

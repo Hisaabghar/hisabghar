@@ -1,29 +1,24 @@
 import { useState } from 'react'
-import type { HomeEntry, HomeType, LoanEntry, Period } from '../../types'
+import type { HomeEntry, HomeType, LoanEntry, Period, Settings } from '../../types'
 import { homeCol, loansCol } from '../../lib/paths'
-import { addItem, allByDate, removeItem, useLiveQuery } from '../../hooks/useData'
+import { allByDate, removeItem, useLiveQuery } from '../../hooks/useData'
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
-import { HOME_EXPENSE, HOME_INCOME, ICONS } from '../../lib/catalog'
+import { ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
+import { HomeForm } from './HomeForm'
 import {
   QuickActions,
   Breakdown,
   Card,
-  Chips,
   ConfirmDelete,
   Fab,
-  Field,
-  FormSheet,
   Hero,
   HeroStat,
   List,
-  MoneyInput,
   PeriodBar,
   Row,
-  Segmented,
   Stat,
   StatGrid,
   Tabs,
-  num,
 } from '../ui/kit'
 import { LoansTab } from './LoansTab'
 import { BarChart } from '../ui/BarChart'
@@ -35,16 +30,37 @@ export const HOME_TABS: { id: HomeTab; label: string; icon: string }[] = [
   { id: 'udhaar', label: 'Loans', icon: '🤝' },
 ]
 
-const byNewest = (a: { date: string; createdAt: number }, b: { date: string; createdAt: number }) =>
-  b.date.localeCompare(a.date) || b.createdAt - a.createdAt
+const byNewest = (a: HomeEntry, b: HomeEntry) =>
+  b.date.localeCompare(a.date) || (b.time ?? '').localeCompare(a.time ?? '') || b.createdAt - a.createdAt
+
+const DEFAULT_ACCOUNT = 'Cash in pocket'
+const accountOf = (e: HomeEntry) => e.account || DEFAULT_ACCOUNT
+
+/** Balance of every account from all entries up to and including `upTo`. */
+function accountBalances(entries: HomeEntry[], accounts: string[], upTo: string) {
+  const bal = new Map<string, number>(accounts.map((a) => [a, 0]))
+  const add = (a: string, v: number) => bal.set(a, (bal.get(a) ?? 0) + v)
+  for (const e of entries) {
+    if (e.date > upTo) continue
+    if (e.type === 'income') add(accountOf(e), e.amount)
+    else if (e.type === 'expense') add(accountOf(e), -e.amount)
+    else {
+      add(accountOf(e), -e.amount)
+      if (e.toAccount) add(e.toAccount, e.amount)
+    }
+  }
+  return [...bal.entries()]
+}
 
 export function HomeSection({
   uid,
+  settings,
   onLock,
   tab,
   setTab,
 }: {
   uid: string
+  settings: Settings
   onLock: () => void
   tab: HomeTab
   setTab: (t: HomeTab) => void
@@ -61,7 +77,9 @@ export function HomeSection({
   const inPeriod = all.filter((e) => inRange(e.date, range))
   const before = all.filter((e) => e.date < range[0])
 
-  const opening = sum(before, (e) => (e.type === 'income' ? e.amount : -e.amount))
+  const accounts = allHomeAccounts([...(settings.homeAccounts ?? []), ...all.flatMap((e) => [e.account ?? '', e.toAccount ?? ''])])
+  const balances = accountBalances(all, accounts, range[1])
+  const opening = sum(before, (e) => (e.type === 'income' ? e.amount : e.type === 'expense' ? -e.amount : 0))
   const income = inPeriod.filter((e) => e.type === 'income')
   const expense = inPeriod.filter((e) => e.type === 'expense')
   const incomeSum = sum(income, (e) => e.amount)
@@ -102,11 +120,19 @@ export function HomeSection({
               </span>
             )}
           </Hero>
+          <Card title={period.date === today() || period.mode === 'month' ? 'My accounts' : 'Account balances'}>
+            <StatGrid>
+              {balances.map(([a, v]) => (
+                <Stat key={a} icon={accountIcon(a)} label={a} value={v} tone={v < 0 ? 'out' : undefined} />
+              ))}
+            </StatGrid>
+          </Card>
           <Card title="Quick add">
             <QuickActions
               items={[
                 { icon: '💼', label: 'Add income', hint: 'Salary, earnings…', onClick: () => setAdding('income') },
                 { icon: '🧾', label: 'Add expense', hint: 'Fuel, friends, bills…', onClick: () => setAdding('expense') },
+                { icon: '🔁', label: 'Transfer', hint: 'Bank → cash, etc.', onClick: () => setAdding('transfer') },
                 { icon: '🤝', label: 'Loans', hint: 'Lent or borrowed', onClick: () => setTab('udhaar') },
               ]}
             />
@@ -142,18 +168,28 @@ export function HomeSection({
             <button className="quickBtn secondary" onClick={() => setAdding('expense')}>
               <span className="qIc">−</span> Add expense
             </button>
+            <button className="quickBtn plain span2" onClick={() => setAdding('transfer')}>
+              <span className="qIc">⇄</span> Transfer between accounts
+            </button>
           </div>
           <Card>
             <List empty="No entries for this period. Use “Add income” or “Add expense” above.">
               {inPeriod.map((e) => (
                 <Row
                   key={e.id}
-                  icon={ICONS[e.category] ?? (e.type === 'income' ? '💵' : '🧾')}
-                  title={e.category}
-                  sub={e.note || undefined}
-                  amount={(e.type === 'income' ? '+' : '−') + rs(e.amount)}
-                  amountSub={shortDate(e.date)}
-                  tone={e.type === 'income' ? 'in' : 'out'}
+                  icon={e.type === 'transfer' ? '🔁' : (ICONS[e.category] ?? (e.type === 'income' ? '💵' : '🧾'))}
+                  title={e.type === 'transfer' ? `${accountOf(e)} → ${e.toAccount}` : e.category}
+                  sub={
+                    [
+                      e.type === 'income' ? `into ${accountOf(e)}` : e.type === 'expense' ? `from ${accountOf(e)}` : 'Transfer',
+                      e.note,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  }
+                  amount={(e.type === 'income' ? '+' : e.type === 'expense' ? '−' : '') + rs(e.amount)}
+                  amountSub={`${shortDate(e.date)}${e.time ? ' · ' + e.time : ''}`}
+                  tone={e.type === 'income' ? 'in' : e.type === 'expense' ? 'out' : undefined}
                   onClick={() => setDeleting(e)}
                 />
               ))}
@@ -166,7 +202,7 @@ export function HomeSection({
 
       {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
-      {adding && <HomeForm uid={uid} initialType={adding} onClose={() => setAdding(null)} />}
+      {adding && <HomeForm uid={uid} initialType={adding} accounts={accounts} onClose={() => setAdding(null)} />}
       {deleting && (
         <ConfirmDelete
           what={`${deleting.category} — ${rs(deleting.amount)} (${shortDate(deleting.date)})`}
@@ -191,47 +227,5 @@ function UdhaarSnapshot({ loans, onOpen }: { loans: LoanEntry[]; onOpen: () => v
       <Stat label="Others owe me" value={lena} tone="in" onClick={onOpen} hint="View loans ›" />
       <Stat label="I owe others" value={dena} tone="out" onClick={onOpen} hint="View loans ›" />
     </StatGrid>
-  )
-}
-
-function HomeForm({ uid, initialType, onClose }: { uid: string; initialType: HomeType; onClose: () => void }) {
-  const [type, setType] = useState<HomeType>(initialType)
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState(initialType === 'income' ? HOME_INCOME[0] : HOME_EXPENSE[0])
-  const [note, setNote] = useState('')
-  const [date, setDate] = useState(today())
-  const cats = type === 'income' ? HOME_INCOME : HOME_EXPENSE
-
-  return (
-    <FormSheet
-      title={type === 'income' ? 'Add income' : 'Add expense'}
-      onClose={onClose}
-      canSave={num(amount) > 0}
-      onSave={() => addItem(homeCol(uid), { type, amount: num(amount), category, note: note.trim(), date })}
-    >
-      <Segmented
-        options={[
-          { id: 'income', label: 'Income (+)' },
-          { id: 'expense', label: 'Expense (−)' },
-        ]}
-        value={type}
-        onChange={(t) => {
-          setType(t)
-          setCategory(t === 'income' ? HOME_INCOME[0] : HOME_EXPENSE[0])
-        }}
-      />
-      <Field label="Amount (Rs)">
-        <MoneyInput value={amount} onChange={setAmount} autoFocus />
-      </Field>
-      <Field label={type === 'income' ? 'Source' : 'Category'}>
-        <Chips options={cats} value={category} onChange={setCategory} />
-      </Field>
-      <Field label="Note (optional)">
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Tea with Ali, 2 litres petrol" />
-      </Field>
-      <Field label="Date">
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      </Field>
-    </FormSheet>
   )
 }
