@@ -68,9 +68,10 @@ export async function askGemini(question: string, context: string, history: Cont
 
 function friendly(err: unknown): Error {
   const msg = String((err as Error)?.message ?? err)
+  const detail = `\n\n(Details: ${msg.slice(0, 300)})`
   if (/api-not-enabled|AI Logic|firebasevertexai|PERMISSION_DENIED|403/i.test(msg))
-    return new Error('Gemini is not switched on yet. In Firebase console open AI Logic → Get started → Gemini Developer API.')
-  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error('The free Gemini limit is used up for now. Try again later, or use Offline mode.')
+    return new Error('Gemini is not switched on yet. In Firebase console open AI Logic → Get started → Gemini Developer API.' + detail)
+  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error('The free Gemini limit is used up for now. Try again later, or use Offline mode.' + detail)
   if (/network|fetch|Failed to fetch/i.test(msg)) return new Error('No internet connection.')
   return new Error(`Gemini error: ${msg.slice(0, 200)}`)
 }

@@ -2093,6 +2093,7 @@ button {
   flex: 0 0 auto;
 }
 .bubble.err {
+  white-space: pre-wrap;
   background: var(--out-soft);
   color: var(--out-text);
   border-color: rgba(239, 68, 68, 0.3);

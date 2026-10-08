@@ -26,7 +26,7 @@ const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
   { id: 'acc', label: 'Accessories', icon: '🎧' },
   { id: 'stock', label: 'Stock', icon: '📦' },
-  { id: 'online', label: 'Online services', icon: '🪪' },
+  { id: 'online', label: 'Online services', icon: '📝' },
 ]
 
 export function bizTabs(settings: Settings): { id: BizTab; label: string; icon: string }[] {

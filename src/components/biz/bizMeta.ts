@@ -18,7 +18,7 @@ export const KIND_SHORT: Record<BizKind, string> = {
   online: 'Online',
   custom: 'Other',
 }
-export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '🪪', custom: '🧩' }
+export const KIND_ICON: Record<BizKind, string> = { wallet: '💸', load: '📶', copy: '🖨️', acc: '🎧', online: '📝', custom: '🧩' }
 
 export const BIZ_ICONS = ['🧩', '🍵', '🔧', '🧵', '💇', '🍔', '🛒', '🚲', '📚', '🎂', '🧴', '📦', '💻', '🧹', '🚚', '🌾']
 
