@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { Period } from '../../types'
 import { periodLabel, rs, shiftPeriod, today } from '../../lib/format'
 import { Sheet } from './Sheet'
@@ -145,8 +145,12 @@ export function HeroStat({ label, value }: { label: string; value: number | stri
   )
 }
 
-export function StatGrid({ children }: { children: ReactNode }) {
-  return <div className="statGrid">{children}</div>
+export function StatGrid({ children, cols }: { children: ReactNode; cols?: number }) {
+  return (
+    <div className={`statGrid ${cols ? 'fixedCols' : ''}`} style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
+      {children}
+    </div>
+  )
 }
 
 export function Stat({
@@ -167,7 +171,7 @@ export function Stat({
   onClick?: () => void
 }) {
   return (
-    <div className={`stat ${onClick ? 'clickable' : ''}`} style={accent ? { borderLeftColor: accent } : undefined} onClick={onClick}>
+    <div className={`stat ${onClick ? 'clickable' : ''}`} style={accent ? ({ borderLeftColor: accent, '--accent-line': accent } as CSSProperties) : undefined} onClick={onClick}>
       {icon ? (
         <div className="statHead">
           <span className="statIc">{icon}</span>

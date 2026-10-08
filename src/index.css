@@ -2369,3 +2369,24 @@ button {
   font-size: 13.5px;
   cursor: pointer;
 }
+
+.statGrid.fixedCols .stat {
+  text-align: center;
+  border-left: 1px solid var(--line) !important;
+  border-top: 4px solid var(--accent-line, var(--line));
+  padding: 14px 10px;
+}
+.statGrid.fixedCols .statVal {
+  font-size: 20px;
+}
+@media (max-width: 520px) {
+  .statGrid.fixedCols {
+    gap: 6px;
+  }
+  .statGrid.fixedCols .stat {
+    padding: 10px 6px;
+  }
+  .statGrid.fixedCols .statVal {
+    font-size: 15px;
+  }
+}

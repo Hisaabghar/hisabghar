@@ -180,7 +180,7 @@ export function BizSection({
                 </div>
               }
             >
-              <StatGrid>
+              <StatGrid cols={3}>
                 <Stat label="Cash in drawer" value={(closing ?? ZERO).cash} hint={open ? `Opening: ${rs(open.cash)}` : 'Opening not set'} accent="#0f766e" />
                 <Stat label="Easypaisa" value={(closing ?? ZERO).easypaisa} hint={open ? `Opening: ${rs(open.easypaisa)}` : 'Opening not set'} accent="#16a34a" />
                 <Stat label="JazzCash" value={(closing ?? ZERO).jazzcash} hint={open ? `Opening: ${rs(open.jazzcash)}` : 'Opening not set'} accent="#dc2626" />
