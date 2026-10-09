@@ -1,9 +1,32 @@
-import { doc, runTransaction } from 'firebase/firestore'
+import { doc, getDoc, runTransaction, updateDoc, type DocumentReference } from 'firebase/firestore'
 import type { Product, StockBatch, StockReason } from '../types'
 import { stockCol, stockLogCol } from './paths'
 import { db } from './firebase'
 import { addItem } from '../hooks/useData'
 import { today } from './format'
+
+/**
+ * Read-modify-write a product. Online it runs as a transaction; offline it
+ * uses the device copy and queues the update (transactions need a connection).
+ */
+async function mutate<R>(ref: DocumentReference, fn: (cur: Product) => { patch: Partial<Product>; result: R }): Promise<R> {
+  if (navigator.onLine) {
+    try {
+      return await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref)
+        const { patch, result } = fn(snap.data() as Product)
+        tx.update(ref, patch)
+        return result
+      })
+    } catch (err) {
+      if (navigator.onLine) throw err
+    }
+  }
+  const snap = await getDoc(ref)
+  const { patch, result } = fn(snap.data() as Product)
+  updateDoc(ref, patch).catch(() => {})
+  return result
+}
 
 export const isLow = (p: Product) => p.qty <= (p.minQty ?? 0)
 
@@ -59,13 +82,11 @@ export async function addStock(
 ) {
   if (qty <= 0) return
   const ref = doc(stockCol(uid), p.id)
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref)
-    const cur = snap.data() as Product
+  await mutate(ref, (cur) => {
     const batches = batchesOf(cur).map((b) => ({ ...b, sale: b.sale ?? cur.salePrice }))
     batches.push({ qty, cost, sale: extra.sale && extra.sale > 0 ? extra.sale : cur.salePrice, date: extra.date ?? today() })
     // costPrice/salePrice always show the stock that will be sold next (the oldest batch).
-    tx.update(ref, { batches, qty: (cur.qty ?? 0) + qty, costPrice: batches[0].cost, salePrice: batches[0].sale ?? cur.salePrice })
+    return { patch: { batches, qty: (cur.qty ?? 0) + qty, costPrice: batches[0].cost, salePrice: batches[0].sale ?? cur.salePrice }, result: null }
   })
   await log(uid, p, qty, extra.reason ?? 'purchase', { unitCost: cost, ...extra })
 }
@@ -74,20 +95,15 @@ export async function addStock(
 export async function takeStock(uid: string, p: { id: string; name: string }, qty: number, reason: StockReason, extra: { note?: string; date?: string } = {}) {
   if (qty <= 0) return 0
   const ref = doc(stockCol(uid), p.id)
-  const cost = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref)
-    const cur = snap.data() as Product
+  const cost = await mutate(ref, (cur) => {
     const batches = batchesOf(cur)
     const lastCost = batches.length ? batches[batches.length - 1].cost : cur.costPrice
     const { cost, left } = takeFifo(batches, qty, lastCost)
     // When the old batch runs out, the next batch's cost and selling price take over.
-    tx.update(ref, {
-      batches: left,
-      qty: (cur.qty ?? 0) - qty,
-      costPrice: left[0]?.cost ?? lastCost,
-      salePrice: left[0]?.sale ?? cur.salePrice,
-    })
-    return cost
+    return {
+      patch: { batches: left, qty: (cur.qty ?? 0) - qty, costPrice: left[0]?.cost ?? lastCost, salePrice: left[0]?.sale ?? cur.salePrice },
+      result: cost,
+    }
   })
   await log(uid, p, -qty, reason, { unitCost: cost / qty, ...extra })
   return cost
@@ -96,19 +112,19 @@ export async function takeStock(uid: string, p: { id: string; name: string }, qt
 /** Deletes one stock batch (e.g. entered by mistake) and takes its quantity out of stock. */
 export async function deleteBatch(uid: string, p: { id: string; name: string }, index: number) {
   const ref = doc(stockCol(uid), p.id)
-  const removed = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref)
-    const cur = snap.data() as Product
+  const removed = await mutate(ref, (cur) => {
     const batches = batchesOf(cur).map((b) => ({ ...b, sale: b.sale ?? cur.salePrice }))
     const [gone] = batches.splice(index, 1)
-    if (!gone) return null
-    tx.update(ref, {
-      batches,
-      qty: Math.max(0, (cur.qty ?? 0) - gone.qty),
-      costPrice: batches[0]?.cost ?? cur.costPrice,
-      salePrice: batches[0]?.sale ?? cur.salePrice,
-    })
-    return gone
+    if (!gone) return { patch: {}, result: null }
+    return {
+      patch: {
+        batches,
+        qty: Math.max(0, (cur.qty ?? 0) - gone.qty),
+        costPrice: batches[0]?.cost ?? cur.costPrice,
+        salePrice: batches[0]?.sale ?? cur.salePrice,
+      },
+      result: gone,
+    }
   })
   if (removed) await log(uid, p, -removed.qty, 'adjust', { unitCost: removed.cost, note: 'Stock batch deleted' })
 }

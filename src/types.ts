@@ -175,9 +175,27 @@ export interface CustomBiz {
   icon: string
 }
 
+/** A bill paid every month (rent, internet…). */
+export interface Bill {
+  id: string
+  name: string
+  amount: number
+  /** Day of the month it is due (1–31). */
+  day: number
+  /** Remind this many days before the due day. */
+  remindDays: number
+  account?: string
+  category?: string
+  /** Months already paid, as YYYY-MM. */
+  paid?: string[]
+}
+
 export interface Settings {
   customBiz?: CustomBiz[]
   pinHash?: string
+  /** Ask for the PIN to open Home Accounts (default on). */
+  homeLock?: boolean
+  bills?: Bill[]
   businessName?: string
   /** Extra load networks the user added on top of the built-in ones. */
   networks?: string[]

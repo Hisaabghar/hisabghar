@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useLiveDoc } from './hooks/useData'
 import { settingsDoc } from './lib/paths'
@@ -13,6 +13,8 @@ import { AddBizSheet } from './components/biz/AddBizSheet'
 import { MentorPage } from './components/MentorPage'
 import { SettingsSheet } from './components/SettingsSheet'
 import { mergeDoc } from './hooks/useData'
+import { billsDue, checkBills, dueText } from './lib/bills'
+import { useOnline } from './hooks/useOnline'
 
 function App() {
   const auth = useAuth()
@@ -82,13 +84,26 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     if (v) setHidden(true)
   }
   // What to do after the PIN is entered: show amounts, or switch privacy mode off.
-  const [askPin, setAskPin] = useState<false | 'show' | 'disable'>(false)
+  const [askPin, setAskPin] = useState<false | 'show' | 'disable' | 'lockoff'>(false)
   // Inside unlocked Home Accounts the PIN was already entered, so amounts show there.
-  const homeOpen = section === 'home' && unlocked
-  const masked = hidden && !homeOpen
-  setAmountsHidden(masked)
   const stored = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`)
   const settings: Settings = { ...stored.data, rates: { ...DEFAULT_RATES, ...stored.data?.rates } }
+  // With the Home PIN switched off in Settings, Home Accounts are always open.
+  const lockOn = settings.homeLock !== false
+  const homeUnlocked = unlocked || !lockOn
+  const homeOpen = section === 'home' && homeUnlocked
+  const masked = hidden && !homeOpen
+  setAmountsHidden(masked)
+  const online = useOnline()
+  const bills = settings.bills ?? []
+  const billsKey = JSON.stringify(bills)
+  useEffect(() => {
+    const list = JSON.parse(billsKey)
+    void checkBills(list)
+    const t = setInterval(() => void checkBills(list), 60 * 60 * 1000)
+    return () => clearInterval(t)
+  }, [billsKey])
+  const due = billsDue(bills)
 
   const bizName = settings.businessName?.trim()
   const initials = (bizName || 'Mera Khata')
@@ -135,7 +150,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           </button>
           <div className="navGroup">
             🔒 Home Accounts
-            {unlocked && (
+            {unlocked && lockOn && (
               <button className="navLock" onClick={() => setUnlocked(false)}>
                 Lock
               </button>
@@ -186,7 +201,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             </div>
             <div className="greetSub">{today}</div>
           </div>
-          {homeOpen ? (
+          {homeOpen && lockOn ? (
             <button className="privacyBtn on" onClick={() => setUnlocked(false)} title="Lock Home Accounts">
               🔒 Lock
             </button>
@@ -213,11 +228,35 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           </button>
         </div>
 
+        {!online && <div className="offlineBanner">📴 Offline — you can keep working. Changes are saved on this phone and sync when you are back online.</div>}
+
+        {due.length > 0 && (
+          <div
+            className="billBanner"
+            onClick={() => {
+              setSection('home')
+              setHomeTab('bills')
+            }}
+          >
+            <span>⏰</span>
+            <span>
+              {due.slice(0, 2).map((x, i) => (
+                <span key={x.bill.id}>
+                  {i > 0 && ' · '}
+                  <b>{x.bill.name}</b> {dueText(x.daysLeft)}
+                </span>
+              ))}
+              {due.length > 2 && ` · +${due.length - 2} more`}
+            </span>
+          </div>
+        )}
+
         {section === 'mentor' && (
           <MentorPage
             uid={uid}
             settings={settings}
-            homeUnlocked={unlocked}
+            homeUnlocked={homeUnlocked}
+            pinRequired={lockOn}
             onOpenHome={() => {
               setSection('home')
               setHomeTab('summary')
@@ -230,8 +269,8 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         {section === 'home' &&
           (stored.loading ? (
             <div className="loadingScreen small">…</div>
-          ) : unlocked ? (
-            <HomeSection uid={uid} settings={settings} onLock={() => setUnlocked(false)} tab={homeTab} setTab={setHomeTab} />
+          ) : homeUnlocked ? (
+            <HomeSection uid={uid} settings={settings} onLock={lockOn ? () => setUnlocked(false) : undefined} tab={homeTab} setTab={setHomeTab} />
           ) : (
             <PinGate
               pinHash={settings.pinHash}
@@ -263,8 +302,21 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           <div className="pinModal">
             <PinGate
               pinHash={settings.pinHash}
-              hint={settings.pinHash ? (askPin === 'disable' ? 'Enter your PIN to turn privacy mode off' : 'Enter your PIN to show amounts') : undefined}
+              hint={
+                settings.pinHash
+                  ? askPin === 'disable'
+                    ? 'Enter your PIN to turn privacy mode off'
+                    : askPin === 'lockoff'
+                      ? 'Enter your PIN to stop asking for it on Home Accounts'
+                      : 'Enter your PIN to show amounts'
+                  : undefined
+              }
               onUnlock={() => {
+                if (askPin === 'lockoff') {
+                  void mergeDoc(settingsDoc(uid), { homeLock: false })
+                  setAskPin(false)
+                  return
+                }
                 if (askPin === 'disable') setPrivacy(false)
                 setHidden(false)
                 setAskPin(false)
@@ -286,6 +338,15 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           onClose={() => setShowSettings(false)}
           onSignOut={onSignOut}
           onPinReset={() => setUnlocked(false)}
+          homeLock={lockOn}
+          onHomeLockChange={(on) => {
+            if (on) void mergeDoc(settingsDoc(uid), { homeLock: true })
+            else if (!settings.pinHash) void mergeDoc(settingsDoc(uid), { homeLock: false })
+            else {
+              setShowSettings(false)
+              setAskPin('lockoff')
+            }
+          }}
           privacy={privacy}
           onPrivacyChange={(on) => {
             if (on) setPrivacy(true)

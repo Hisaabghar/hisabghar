@@ -79,11 +79,13 @@ export function MentorPage({
   uid,
   settings,
   homeUnlocked,
+  pinRequired,
   onOpenHome,
 }: {
   uid: string
   settings: Settings
   homeUnlocked: boolean
+  pinRequired: boolean
   onOpenHome: () => void
 }) {
   const biz = useLiveQuery<BizEntry>(allByDate(bizCol(uid)), `bizall-${uid}`)
@@ -112,7 +114,7 @@ export function MentorPage({
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [msgs])
 
-  async function ask(q: string, ok = verified) {
+  async function ask(q: string, ok = verified || !pinRequired) {
     const question = q.trim()
     if (!question || busy) return
     setText('')
@@ -155,7 +157,7 @@ export function MentorPage({
     <div className="mentor">
       <div className="pageHead">
         <h1 className="pageTitle">🤖 Mentor</h1>
-        {verified && (
+        {verified && pinRequired && (
           <button className="privacyBtn on" onClick={() => setVerified(false)}>
             🔒 Lock Mentor
           </button>

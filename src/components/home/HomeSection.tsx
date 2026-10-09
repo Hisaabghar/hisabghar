@@ -28,11 +28,15 @@ import {
 } from '../ui/kit'
 import { LoansTab } from './LoansTab'
 import { BarChart } from '../ui/BarChart'
+import { BillsTab } from './BillsTab'
+import { ReportTab } from './ReportTab'
 
-export type HomeTab = 'summary' | 'entries' | 'udhaar'
+export type HomeTab = 'summary' | 'entries' | 'report' | 'bills' | 'udhaar'
 export const HOME_TABS: { id: HomeTab; label: string; icon: string }[] = [
   { id: 'summary', label: 'Overview', icon: '📈' },
   { id: 'entries', label: 'Income & Expenses', icon: '🧾' },
+  { id: 'report', label: 'Spending report', icon: '📊' },
+  { id: 'bills', label: 'Monthly bills', icon: '🔔' },
   { id: 'udhaar', label: 'Loans', icon: '🤝' },
 ]
 
@@ -89,7 +93,7 @@ export function HomeSection({
 }: {
   uid: string
   settings: Settings
-  onLock: () => void
+  onLock?: () => void
   tab: HomeTab
   setTab: (t: HomeTab) => void
 }) {
@@ -130,13 +134,15 @@ export function HomeSection({
     <>
       <div className="sectionHead mobileOnly">
         <Tabs tabs={HOME_TABS} value={tab} onChange={setTab} />
-        <button className="lockBtn" onClick={onLock} title="Lock">
-          🔒 Lock
-        </button>
+        {onLock && (
+          <button className="lockBtn" onClick={onLock} title="Lock">
+            🔒 Lock
+          </button>
+        )}
       </div>
       <div className="pageHead">
         <h1 className="pageTitle desktopOnly">{HOME_TABS.find((t) => t.id === tab)?.label}</h1>
-        {tab !== 'udhaar' && <PeriodBar period={period} onChange={setPeriod} />}
+        {tab !== 'udhaar' && tab !== 'bills' && <PeriodBar period={period} onChange={setPeriod} />}
       </div>
       {err && <div className="errorBanner">{err}</div>}
 
@@ -268,9 +274,15 @@ export function HomeSection({
         </>
       )}
 
+      {tab === 'report' && (
+        <ReportTab expenses={inPeriod.filter((e) => e.type === 'expense')} accounts={accounts} accountOf={accountOf} onOpen={setDeleting} />
+      )}
+
+      {tab === 'bills' && <BillsTab uid={uid} settings={settings} accounts={accounts} />}
+
       {tab === 'udhaar' && <LoansTab uid={uid} loans={loans.items} />}
 
-      {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
+      {tab !== 'udhaar' && tab !== 'bills' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
       {view &&
         !deleting &&

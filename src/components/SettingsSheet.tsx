@@ -18,7 +18,11 @@ export function SettingsSheet({
   onPinReset,
   privacy,
   onPrivacyChange,
+  homeLock,
+  onHomeLockChange,
 }: {
+  homeLock: boolean
+  onHomeLockChange: (on: boolean) => void
   privacy: boolean
   onPrivacyChange: (on: boolean) => void
   uid: string
@@ -262,6 +266,13 @@ export function SettingsSheet({
 
       <div className="settingsGroup">
         <div className="settingsHead">Home Accounts PIN</div>
+        <label className="checkRow soundRow">
+          <input type="checkbox" checked={homeLock} onChange={(e) => onHomeLockChange(e.target.checked)} />
+          🔒 Ask for PIN to open Home Accounts
+        </label>
+        <div className="statHint">
+          {homeLock ? 'On: Home Accounts and Mentor ask for your PIN.' : 'Off: Home Accounts open without a PIN. Turning it off asks for your PIN once.'}
+        </div>
         {settings.pinHash ? (
           <>
             {pinStep === 'old' ? (

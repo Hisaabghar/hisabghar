@@ -61,18 +61,31 @@ export const byDateRange = (col: CollectionReference, from: string, to: string) 
 
 export const allByDate = (col: CollectionReference) => query(col, orderBy('date', 'desc'))
 
+/**
+ * Firestore applies a write to the local cache at once but its promise only
+ * settles when the server confirms. Offline that never happens, so wait at
+ * most a moment; the queued write syncs by itself when back online.
+ */
+async function settle(p: Promise<unknown>) {
+  if (!navigator.onLine) {
+    p.catch(() => {})
+    return
+  }
+  await Promise.race([p, new Promise((r) => setTimeout(r, 2500))])
+}
+
 export async function addItem<T extends object>(col: CollectionReference, data: T) {
-  await addDoc(col, { ...data, createdAt: Date.now() })
+  await settle(addDoc(col, { ...data, createdAt: Date.now() }))
 }
 
 export async function removeItem(col: CollectionReference, id: string) {
-  await deleteDoc(doc(col, id))
+  await settle(deleteDoc(doc(col, id)))
 }
 
 export async function patchItem(col: CollectionReference, id: string, data: object) {
-  await updateDoc(doc(col, id), data)
+  await settle(updateDoc(doc(col, id), data))
 }
 
 export async function mergeDoc(ref: DocumentReference, data: object) {
-  await setDoc(ref, data, { merge: true })
+  await settle(setDoc(ref, data, { merge: true }))
 }

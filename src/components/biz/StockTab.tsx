@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 import type { Product, StockMove } from '../../types'
 import { stockCol, stockLogCol } from '../../lib/paths'
-import { allByDate, useLiveQuery } from '../../hooks/useData'
+import { allByDate, patchItem, removeItem, useLiveQuery } from '../../hooks/useData'
 import { rs, shortDate, sum, today } from '../../lib/format'
 import { STOCK_CATEGORIES, STOCK_UNITS } from '../../lib/catalog'
 import { addStock, batchesOf, deleteBatch, isLow, takeStock } from '../../lib/stock'
@@ -124,10 +124,12 @@ function ProductForm({ uid, edit, onClose }: { uid: string; edit?: Product; onCl
         if (edit) {
           // Cost comes from the stock batches once stock has been bought.
           const { costPrice, ...rest } = data
-          await updateDoc(doc(stockCol(uid), edit.id), edit.batches?.length ? rest : { ...rest, costPrice })
+          await patchItem(stockCol(uid), edit.id, edit.batches?.length ? rest : { ...rest, costPrice })
           return
         }
-        const ref = await addDoc(stockCol(uid), { ...data, qty: 0, createdAt: Date.now() })
+        // Create the id locally so this also works offline.
+        const ref = doc(stockCol(uid))
+        setDoc(ref, { ...data, qty: 0, createdAt: Date.now() }).catch(() => {})
         if (num(qty) > 0) await addStock(uid, { id: ref.id, name: data.name }, num(qty), num(cost), { reason: 'opening', sale: num(sale) })
       }}
     >
@@ -316,7 +318,7 @@ function ProductSheet({ uid, p, log, onClose }: { uid: string; p: Product; log: 
           <button
             className="btnDanger"
             onClick={async () => {
-              await deleteDoc(doc(stockCol(uid), p.id))
+              await removeItem(stockCol(uid), p.id)
               onClose()
             }}
           >
