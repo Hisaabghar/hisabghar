@@ -2439,3 +2439,16 @@ button {
   font-weight: 600;
   color: var(--text);
 }
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+}
+.editGrid .field:first-child:nth-last-child(odd) {
+  grid-column: 1 / -1;
+}
+.delOutline {
+  color: var(--out-text) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}

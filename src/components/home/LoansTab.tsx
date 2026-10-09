@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { LoanEntry, LoanKind } from '../../types'
 import { loansCol } from '../../lib/paths'
-import { addItem, removeItem } from '../../hooks/useData'
+import { addItem, removeItem, patchItem } from '../../hooks/useData'
 import { rs, shortDate, sum, today } from '../../lib/format'
-import { Card, ConfirmDelete, Fab, Field, FormSheet, List, MoneyInput, Row, Stat, StatGrid, num } from '../ui/kit'
+import { Card, EditEntry, Fab, Field, FormSheet, List, MoneyInput, Row, Stat, StatGrid, num } from '../ui/kit'
 
 const KIND_LABEL: Record<LoanKind, string> = {
   diya: 'I lent money',
@@ -70,10 +70,18 @@ export function LoansTab({ uid, loans }: { uid: string; loans: LoanEntry[] }) {
         </Card>
         {adding && <LoanForm uid={uid} initial={adding} people={[...people.keys()]} onClose={() => setAdding(null)} />}
         {deleting && (
-          <ConfirmDelete
-            what={`${KIND_LABEL[deleting.kind]} — ${rs(deleting.amount)}`}
+          <EditEntry
+            title={KIND_LABEL[deleting.kind]}
+            subtitle={deleting.person}
+            fields={[
+              { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
+              { key: 'date', label: 'Date', kind: 'date' },
+              { key: 'note', label: 'Note', kind: 'text' },
+            ]}
+            initial={deleting}
+            onSave={(v) => patchItem(loansCol(uid), deleting.id, v)}
+            onDelete={() => removeItem(loansCol(uid), deleting.id)}
             onClose={() => setDeleting(null)}
-            onConfirm={() => removeItem(loansCol(uid), deleting.id)}
           />
         )}
       </>

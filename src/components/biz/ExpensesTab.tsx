@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { ShopExpense, Till } from '../../types'
 import { shopExpCol } from '../../lib/paths'
-import { addItem, removeItem } from '../../hooks/useData'
+import { addItem, removeItem, patchItem } from '../../hooks/useData'
 import { groupSum, rs, shortDate, sum } from '../../lib/format'
 import { SHOP_EXPENSES, SHOP_EXPENSE_ICONS } from '../../lib/catalog'
-import { Breakdown, Card, Chips, ConfirmDelete, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, num } from '../ui/kit'
+import { Breakdown, Card, Chips, EditEntry, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, num } from '../ui/kit'
 import { TillPicker } from './TillPicker'
 
 const TILL_LABEL: Record<Till, string> = { cash: 'cash', easypaisa: 'Easypaisa', jazzcash: 'JazzCash' }
@@ -56,10 +56,18 @@ export function ExpensesTab({
       <Fab label="Add expense" onClick={() => setAdding(true)} />
       {adding && <ExpenseForm uid={uid} date={date} onClose={() => setAdding(false)} />}
       {deleting && (
-        <ConfirmDelete
-          what={`${deleting.category} — ${rs(deleting.amount)}`}
+        <EditEntry
+          title={deleting.category}
+          subtitle={`Paid from ${TILL_LABEL[deleting.paidFrom ?? 'cash']}`}
+          fields={[
+            { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
+            { key: 'date', label: 'Date', kind: 'date' },
+            { key: 'note', label: 'Note', kind: 'text' },
+          ]}
+          initial={deleting}
+          onSave={(v) => patchItem(shopExpCol(uid), deleting.id, v)}
+          onDelete={() => removeItem(shopExpCol(uid), deleting.id)}
           onClose={() => setDeleting(null)}
-          onConfirm={() => removeItem(shopExpCol(uid), deleting.id)}
         />
       )}
     </>

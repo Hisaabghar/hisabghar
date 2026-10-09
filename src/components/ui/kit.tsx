@@ -385,6 +385,120 @@ export function ConfirmDelete({ what, onClose, onConfirm }: { what: string; onCl
   )
 }
 
+export interface EditField {
+  key: string
+  label: string
+  kind: 'money' | 'text' | 'date' | 'time'
+  placeholder?: string
+}
+
+/** Tap an entry → edit its fields or delete it (with a confirm step). */
+export function EditEntry({
+  title,
+  subtitle,
+  fields,
+  initial,
+  onSave,
+  onDelete,
+  onClose,
+  deleteNote,
+}: {
+  title: string
+  subtitle?: string
+  fields: EditField[]
+  initial: object
+  onSave: (values: Record<string, string | number>) => Promise<void>
+  onDelete: () => Promise<void>
+  onClose: () => void
+  deleteNote?: string
+}) {
+  const [vals, setVals] = useState<Record<string, string>>(
+    Object.fromEntries(
+      fields.map((f) => {
+        const v = (initial as Record<string, unknown>)[f.key]
+        return [f.key, v === undefined || v === null ? '' : String(v)]
+      }),
+    ),
+  )
+  const [confirm, setConfirm] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const set = (k: string, v: string) => setVals((x) => ({ ...x, [k]: v }))
+  const moneyOk = fields.filter((f) => f.kind === 'money').every((f) => vals[f.key] === '' || Number.isFinite(parseFloat(vals[f.key])))
+
+  async function run(fn: () => Promise<void>) {
+    setBusy(true)
+    setError(null)
+    try {
+      await fn()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Sheet title={confirm ? 'Delete this entry?' : title} onClose={onClose}>
+      {subtitle && !confirm && <p className="sheetText">{subtitle}</p>}
+      {error && <div className="errorBanner">{error}</div>}
+      {confirm ? (
+        <>
+          <p className="sheetText">This can’t be undone.{deleteNote ? ` ${deleteNote}` : ''}</p>
+          <div className="sheetBtns">
+            <button className="btnGhost" onClick={() => setConfirm(false)}>
+              Back
+            </button>
+            <button className="btnDanger" disabled={busy} onClick={() => run(onDelete)}>
+              Yes, delete
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="editGrid">
+            {fields.map((f) => (
+              <Field key={f.key} label={f.label}>
+                {f.kind === 'money' ? (
+                  <MoneyInput value={vals[f.key]} onChange={(v) => set(f.key, v)} />
+                ) : (
+                  <input
+                    type={f.kind === 'date' ? 'date' : f.kind === 'time' ? 'time' : 'text'}
+                    value={vals[f.key]}
+                    placeholder={f.placeholder}
+                    onChange={(e) => set(f.key, e.target.value)}
+                  />
+                )}
+              </Field>
+            ))}
+          </div>
+          <div className="sheetBtns">
+            <button className="btnGhost delOutline" onClick={() => setConfirm(true)}>
+              🗑️ Delete
+            </button>
+            <button
+              className="btnPrimary"
+              disabled={busy || !moneyOk}
+              onClick={() =>
+                run(() =>
+                  onSave(
+                    Object.fromEntries(
+                      fields.map((f) => [f.key, f.kind === 'money' ? num(vals[f.key]) : vals[f.key].trim()]),
+                    ),
+                  ),
+                )
+              }
+            >
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </>
+      )}
+    </Sheet>
+  )
+}
+
 export function QuickActions({ items }: { items: { icon: string; label: string; hint?: string; onClick: () => void }[] }) {
   return (
     <div className="quickGrid">

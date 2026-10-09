@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import type { BizEntry, InvestEntry } from '../../types'
 import { bizCol, investCol } from '../../lib/paths'
-import { addItem, allByDate, removeItem, useLiveQuery } from '../../hooks/useData'
+import { addItem, allByDate, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
 import { groupSum, rs, shortDate, sum, today } from '../../lib/format'
 import { INVEST_CATEGORIES, INVEST_ICONS } from '../../lib/catalog'
 import {
   Breakdown,
   Card,
   Chips,
-  ConfirmDelete,
+  EditEntry,
   Fab,
   Field,
   FormSheet,
@@ -81,10 +81,19 @@ export function InvestTab({ uid }: { uid: string }) {
       <Fab label="Add investment" onClick={() => setAdding(true)} />
       {adding && <InvestForm uid={uid} onClose={() => setAdding(false)} />}
       {deleting && (
-        <ConfirmDelete
-          what={`${deleting.item || deleting.category} — ${rs(deleting.amount)}`}
+        <EditEntry
+          title={deleting.item || deleting.category}
+          subtitle={deleting.category}
+          fields={[
+            { key: 'item', label: 'What', kind: 'text' },
+            { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
+            { key: 'date', label: 'Date', kind: 'date' },
+            { key: 'note', label: 'Note', kind: 'text' },
+          ]}
+          initial={deleting}
+          onSave={(v) => patchItem(investCol(uid), deleting.id, v)}
+          onDelete={() => removeItem(investCol(uid), deleting.id)}
           onClose={() => setDeleting(null)}
-          onConfirm={() => removeItem(investCol(uid), deleting.id)}
         />
       )}
     </>

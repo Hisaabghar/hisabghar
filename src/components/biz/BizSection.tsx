@@ -6,7 +6,7 @@ import { addDays, dailySeries, groupSum, periodRange, rs, shiftPeriod, shortDate
 import { Donut } from '../ui/Donut'
 import { BarChart } from '../ui/BarChart'
 import { COPY_TYPES, NETWORK_COLORS, allNetworks } from '../../lib/catalog'
-import { Breakdown, Card, ConfirmDelete, Fab, Hero, HeroStat, List, PeriodBar, QuickActions, Row, Stat, StatGrid, Tabs } from '../ui/kit'
+import { Breakdown, Card, EditEntry, Fab, Hero, HeroStat, List, PeriodBar, QuickActions, Row, Stat, StatGrid, Tabs } from '../ui/kit'
 import { KIND_ICON, KIND_LABEL, KIND_SHORT, WALLET_LABEL, entrySub, entryTitle, walletClosing } from './bizMeta'
 import { BizForm } from './BizForm'
 import { OpeningForm } from './OpeningForm'
@@ -17,7 +17,7 @@ import { KhataTab, CreditForm, khataBalances } from './KhataTab'
 import { ExpensesTab, ExpenseForm } from './ExpensesTab'
 import { CloseDaySheet } from './CloseDaySheet'
 import { SellSheet } from './SellSheet'
-import { isLow } from '../../lib/stock'
+import { addStock, isLow } from '../../lib/stock'
 import { creditCol, shopExpCol, stockCol } from '../../lib/paths'
 import type { CreditEntry, Product, ShopExpense } from '../../types'
 
@@ -477,10 +477,34 @@ export function BizSection({
         <OpeningForm uid={uid} date={period.date} current={open ?? ZERO} onClose={() => setEditOpening(false)} />
       )}
       {deleting && (
-        <ConfirmDelete
-          what={`${entryTitle(deleting)} — ${rs(deleting.amount)}`}
+        <EditEntry
+          title={entryTitle(deleting)}
+          subtitle={deleting.kind === 'wallet' ? 'Amount = money sent/withdrawn · Profit = commission' : undefined}
+          fields={[
+            { key: 'amount', label: deleting.kind === 'wallet' ? 'Amount (Rs)' : 'Received (Rs)', kind: 'money' },
+            { key: 'profit', label: deleting.kind === 'wallet' ? 'Commission (Rs)' : 'Profit (Rs)', kind: 'money' },
+            ...(deleting.kind === 'wallet' || deleting.kind === 'online' || deleting.kind === 'acc'
+              ? ([
+                  { key: 'customer', label: 'Customer name', kind: 'text' },
+                  { key: 'phone', label: 'Phone', kind: 'text' },
+                ] as const)
+              : []),
+            { key: 'note', label: 'Note', kind: 'text' },
+            { key: 'date', label: 'Date', kind: 'date' },
+          ]}
+          initial={deleting}
+          onSave={(v) => patchItem(bizCol(uid), deleting.id, v)}
+          deleteNote={deleting.productId ? `${deleting.qty ?? 1} item(s) will go back into stock.` : undefined}
+          onDelete={async () => {
+            await removeItem(bizCol(uid), deleting.id)
+            // Undo the stock taken by this sale.
+            if (deleting.productId)
+              await addStock(uid, { id: deleting.productId, name: deleting.item ?? '' }, deleting.qty ?? 1, deleting.cost ?? 0, {
+                reason: 'adjust',
+                note: 'Sale deleted',
+              })
+          }}
           onClose={() => setDeleting(null)}
-          onConfirm={() => removeItem(bizCol(uid), deleting.id)}
         />
       )}
     </>

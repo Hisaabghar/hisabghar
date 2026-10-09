@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { CreditEntry, Till } from '../../types'
 import { creditCol } from '../../lib/paths'
-import { addItem, removeItem } from '../../hooks/useData'
+import { addItem, removeItem, patchItem } from '../../hooks/useData'
 import { rs, rsRaw, shortDate, sum, today } from '../../lib/format'
 import { whatsappLink } from '../../lib/whatsapp'
-import { Card, ConfirmDelete, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
+import { Card, EditEntry, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
 import { TillPicker } from './TillPicker'
 
 /** Positive = the customer owes the shop. */
@@ -83,10 +83,18 @@ export function KhataTab({ uid, entries, shopName }: { uid: string; entries: Cre
         </Card>
         {form}
         {deleting && (
-          <ConfirmDelete
-            what={`${deleting.kind === 'credit' ? 'Udhaar' : 'Payment'} — ${rs(deleting.amount)}`}
+          <EditEntry
+            title={deleting.kind === 'credit' ? 'Udhaar given' : 'Payment received'}
+            subtitle={deleting.customer}
+            fields={[
+              { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
+              { key: 'date', label: 'Date', kind: 'date' },
+              { key: 'note', label: 'Note', kind: 'text' },
+            ]}
+            initial={deleting}
+            onSave={(v) => patchItem(creditCol(uid), deleting.id, v)}
+            onDelete={() => removeItem(creditCol(uid), deleting.id)}
             onClose={() => setDeleting(null)}
-            onConfirm={() => removeItem(creditCol(uid), deleting.id)}
           />
         )}
       </>

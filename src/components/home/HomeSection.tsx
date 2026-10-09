@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { HomeEntry, HomeType, LoanEntry, Period, Settings } from '../../types'
 import { homeCol, loansCol } from '../../lib/paths'
-import { allByDate, removeItem, useLiveQuery } from '../../hooks/useData'
+import { allByDate, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
 import { HomeForm, ME } from './HomeForm'
@@ -9,7 +9,7 @@ import {
   QuickActions,
   Breakdown,
   Card,
-  ConfirmDelete,
+  EditEntry,
   Fab,
   Hero,
   HeroStat,
@@ -270,10 +270,19 @@ export function HomeSection({
         />
       )}
       {deleting && (
-        <ConfirmDelete
-          what={`${deleting.category} — ${rs(deleting.amount)} (${shortDate(deleting.date)})`}
+        <EditEntry
+          title={deleting.type === 'transfer' ? `Transfer ${deleting.account ?? ''} → ${deleting.toAccount ?? ''}` : deleting.category}
+          subtitle={`${deleting.type === 'income' ? 'Income' : deleting.type === 'expense' ? 'Expense' : 'Transfer'}${deleting.owner ? ` · ${deleting.owner}'s money` : ''}`}
+          fields={[
+            { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
+            { key: 'note', label: 'Note', kind: 'text' },
+            { key: 'date', label: 'Date', kind: 'date' },
+            { key: 'time', label: 'Time', kind: 'time' },
+          ]}
+          initial={deleting}
+          onSave={(v) => patchItem(homeCol(uid), deleting.id, v)}
+          onDelete={() => removeItem(homeCol(uid), deleting.id)}
           onClose={() => setDeleting(null)}
-          onConfirm={() => removeItem(homeCol(uid), deleting.id)}
         />
       )}
     </>
