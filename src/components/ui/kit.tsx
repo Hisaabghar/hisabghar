@@ -388,8 +388,10 @@ export function ConfirmDelete({ what, onClose, onConfirm }: { what: string; onCl
 export interface EditField {
   key: string
   label: string
-  kind: 'money' | 'text' | 'date' | 'time'
+  kind: 'money' | 'text' | 'date' | 'time' | 'select'
   placeholder?: string
+  /** For kind 'select': value/label pairs. */
+  options?: { value: string; label: string }[]
 }
 
 /** Tap an entry → edit its fields or delete it (with a confirm step). */
@@ -462,6 +464,17 @@ export function EditEntry({
               <Field key={f.key} label={f.label}>
                 {f.kind === 'money' ? (
                   <MoneyInput value={vals[f.key]} onChange={(v) => set(f.key, v)} />
+                ) : f.kind === 'select' ? (
+                  <select value={vals[f.key]} onChange={(e) => set(f.key, e.target.value)}>
+                    {(f.options ?? []).some((o) => o.value === vals[f.key]) || !vals[f.key] ? null : (
+                      <option value={vals[f.key]}>{vals[f.key]}</option>
+                    )}
+                    {(f.options ?? []).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <input
                     type={f.kind === 'date' ? 'date' : f.kind === 'time' ? 'time' : 'text'}

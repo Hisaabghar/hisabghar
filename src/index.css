@@ -2452,3 +2452,17 @@ button {
   color: var(--out-text) !important;
   border-color: rgba(239, 68, 68, 0.35) !important;
 }
+
+.fixBox {
+  border: 1px dashed var(--brand-2);
+  border-radius: 14px;
+  padding: 4px 12px 12px;
+  margin-bottom: 12px;
+  background: rgba(20, 184, 166, 0.06);
+}
+.wrapBtns {
+  flex-wrap: wrap;
+}
+.wrapBtns > * {
+  flex: 1 1 auto;
+}

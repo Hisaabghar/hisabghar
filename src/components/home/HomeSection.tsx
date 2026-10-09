@@ -1,17 +1,21 @@
-import { arrayRemove, arrayUnion } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, deleteField } from 'firebase/firestore'
 import { Sheet } from '../ui/Sheet'
 import { useState } from 'react'
 import type { HomeEntry, HomeType, LoanEntry, Period, Settings } from '../../types'
 import { homeCol, loansCol, settingsDoc } from '../../lib/paths'
-import { allByDate, mergeDoc, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
+import { addItem, allByDate, mergeDoc, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
-import { ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
+import { HOME_EXPENSE, HOME_INCOME, ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
 import { HomeForm, ME } from './HomeForm'
 import {
   QuickActions,
   Breakdown,
   Card,
   EditEntry,
+  Field,
+  MoneyInput,
+  num,
+  type EditField,
   Fab,
   Hero,
   HeroStat,
@@ -106,9 +110,9 @@ export function HomeSection({
   const accounts = allHomeAccounts([...(settings.homeAccounts ?? []), ...all.flatMap((e) => [e.account ?? '', e.toAccount ?? ''])]).filter(
     (a) => !hidden.has(a),
   )
-  const [accSheet, setAccSheet] = useState<{ account: string; total: number } | null>(null)
-  const [ownerSheet, setOwnerSheet] = useState<string | null>(null)
-  const [wipeOwner, setWipeOwner] = useState(false)
+  const [view, setView] = useState<{ type: 'owner' | 'mine' | 'account'; name: string } | null>(null)
+  const [wipe, setWipe] = useState(false)
+  const [fixing, setFixing] = useState<string | null>(null)
   const owners = [...new Set([...(settings.owners ?? []), ...all.map((e) => e.owner ?? '').filter(Boolean)])]
   const held = holdings(all, accounts, range[1])
   const othersHeld = [...held.owners.entries()].filter(([o, v]) => o !== ME && Math.round(v.total) !== 0)
@@ -164,7 +168,7 @@ export function HomeSection({
                   value={a.total}
                   tone={a.total < 0 ? 'out' : undefined}
                   hint={Math.round(a.others) !== 0 ? `Mine ${rs(a.mine)} · Others ${rs(a.others)}` : undefined}
-                  onClick={() => setAccSheet({ account: a.account, total: a.total })}
+                  onClick={() => setView({ type: 'account', name: a.account })}
                 />
               ))}
             </StatGrid>
@@ -186,7 +190,7 @@ export function HomeSection({
                   sub={v.where.map(([acc, amt]) => `${acc} ${rs(amt)}`).join(' · ') || 'Nothing held'}
                   amount={rs(v.total)}
                   tone={o === ME ? 'in' : undefined}
-                  onClick={o === ME ? undefined : () => setOwnerSheet(o)}
+                  onClick={() => setView(o === ME ? { type: 'mine', name: ME } : { type: 'owner', name: o })}
                 />
               ))}
             </List>
@@ -268,52 +272,119 @@ export function HomeSection({
 
       {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
-      {ownerSheet &&
+      {view &&
         !deleting &&
         (() => {
-          const list = all.filter((e) => e.owner === ownerSheet)
-          const total = sum(list, (e) => (e.type === 'income' ? e.amount : e.type === 'expense' ? -e.amount : 0))
+          // Entries that make up this person's money / this account's balance.
+          const list = all.filter((e) =>
+            view.type === 'owner'
+              ? e.owner === view.name
+              : view.type === 'mine'
+                ? isMine(e)
+                : accountOf(e) === view.name || e.toAccount === view.name,
+          )
+          const effect = (e: HomeEntry) =>
+            view.type === 'account'
+              ? e.type === 'income'
+                ? e.amount
+                : e.type === 'expense'
+                  ? -e.amount
+                  : (e.toAccount === view.name ? e.amount : 0) - (accountOf(e) === view.name ? e.amount : 0)
+              : e.type === 'income'
+                ? e.amount
+                : e.type === 'expense'
+                  ? -e.amount
+                  : 0
+          const total = sum(list, effect)
+          const close = () => {
+            setView(null)
+            setWipe(false)
+            setFixing(null)
+          }
+          const title = view.type === 'owner' ? `${view.name}'s money` : view.type === 'mine' ? 'My money' : `${accountIcon(view.name)} ${view.name}`
           return (
-            <Sheet
-              title={`${ownerSheet}'s money`}
-              onClose={() => {
-                setOwnerSheet(null)
-                setWipeOwner(false)
-              }}
-            >
+            <Sheet title={title} onClose={close}>
               <p className="sheetText">
-                Holding now: <b>{rs(total)}</b> · tap an entry to edit or delete it.
+                {view.type === 'account' ? 'Balance' : 'Holding now'}: <b>{rs(total)}</b> · tap any entry to edit or delete it.
               </p>
+
+              {view.type === 'account' && fixing !== null && (
+                <div className="fixBox">
+                  <Field label={`Actual balance in ${view.name} right now (Rs)`}>
+                    <MoneyInput value={fixing} onChange={setFixing} autoFocus />
+                  </Field>
+                  {fixing !== '' && Math.round(num(fixing) - total) !== 0 && (
+                    <div className="statHint">
+                      A “Balance correction” of {num(fixing) - total > 0 ? '+' : '−'}
+                      {rs(Math.abs(num(fixing) - total))} will be added so the balance becomes {rs(num(fixing))}.
+                    </div>
+                  )}
+                  <div className="sheetBtns">
+                    <button className="btnGhost" onClick={() => setFixing(null)}>
+                      Cancel
+                    </button>
+                    <button
+                      className="btnPrimary"
+                      disabled={fixing === '' || Math.round(num(fixing) - total) === 0}
+                      onClick={async () => {
+                        const diff = num(fixing) - total
+                        await addItem(homeCol(uid), {
+                          type: diff > 0 ? 'income' : 'expense',
+                          amount: Math.abs(diff),
+                          category: 'Balance correction',
+                          account: view.name,
+                          note: `Set balance to ${num(fixing)}`,
+                          date: today(),
+                          time: new Date().toTimeString().slice(0, 5),
+                        })
+                        setFixing(null)
+                      }}
+                    >
+                      Save balance
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <List empty="No entries.">
-                {list.map((e) => (
-                  <Row
-                    key={e.id}
-                    icon={e.type === 'income' ? '📥' : e.type === 'expense' ? '📤' : '🔁'}
-                    title={e.type === 'income' ? `Kept in ${accountOf(e)}` : e.type === 'expense' ? `Paid out of ${accountOf(e)}` : `${accountOf(e)} → ${e.toAccount}`}
-                    sub={[e.category, e.note].filter(Boolean).join(' · ')}
-                    amount={(e.type === 'income' ? '+' : e.type === 'expense' ? '−' : '') + rs(e.amount)}
-                    amountSub={`${shortDate(e.date)}${e.time ? ' · ' + e.time : ''}`}
-                    tone={e.type === 'income' ? 'in' : e.type === 'expense' ? 'out' : undefined}
-                    onClick={() => setDeleting(e)}
-                  />
-                ))}
+                {list.map((e) => {
+                  const v = effect(e)
+                  return (
+                    <Row
+                      key={e.id}
+                      icon={e.type === 'transfer' ? '🔁' : (ICONS[e.category] ?? (e.type === 'income' ? '💵' : '🧾'))}
+                      title={e.type === 'transfer' ? `${accountOf(e)} → ${e.toAccount}` : e.category}
+                      sub={[
+                        view.type !== 'account' ? accountOf(e) : '',
+                        view.type !== 'owner' && !isMine(e) ? `${ownerOf(e)}'s money` : '',
+                        e.note,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      amount={(v > 0 ? '+' : v < 0 ? '−' : '') + rs(Math.abs(v || e.amount))}
+                      amountSub={`${shortDate(e.date)}${e.time ? ' · ' + e.time : ''}`}
+                      tone={v > 0 ? 'in' : v < 0 ? 'out' : undefined}
+                      onClick={() => setDeleting(e)}
+                    />
+                  )
+                })}
               </List>
-              {wipeOwner ? (
+
+              {wipe ? (
                 <>
                   <div className="errorBanner">
-                    Delete all {list.length} entries of {ownerSheet}? Their {rs(total)} will no longer show in your accounts. This can’t be undone.
+                    Delete all {list.length} entries {view.type === 'account' ? `of ${view.name}` : view.type === 'owner' ? `of ${view.name}` : 'of your own money'}? This can’t be undone.
                   </div>
                   <div className="sheetBtns">
-                    <button className="btnGhost" onClick={() => setWipeOwner(false)}>
+                    <button className="btnGhost" onClick={() => setWipe(false)}>
                       Back
                     </button>
                     <button
                       className="btnDanger"
                       onClick={async () => {
                         for (const e of list) await removeItem(homeCol(uid), e.id)
-                        await mergeDoc(settingsDoc(uid), { owners: arrayRemove(ownerSheet) })
-                        setWipeOwner(false)
-                        setOwnerSheet(null)
+                        if (view.type === 'owner') await mergeDoc(settingsDoc(uid), { owners: arrayRemove(view.name) })
+                        close()
                       }}
                     >
                       Yes, delete all
@@ -321,74 +392,56 @@ export function HomeSection({
                   </div>
                 </>
               ) : (
-                <div className="sheetBtns">
-                  <button className="btnGhost delOutline" onClick={() => setWipeOwner(true)}>
-                    🗑️ Delete all
-                  </button>
-                  <button
-                    className="btnPrimary"
-                    onClick={() => {
-                      const o = ownerSheet
-                      setOwnerSheet(null)
-                      setAdding('expense', o)
-                    }}
-                  >
-                    ↪️ Return / pay out money
-                  </button>
+                <div className="sheetBtns wrapBtns">
+                  {list.length > 0 && (
+                    <button className="btnGhost delOutline" onClick={() => setWipe(true)}>
+                      🗑️ Delete all
+                    </button>
+                  )}
+                  {view.type === 'account' && Math.round(total) === 0 && (
+                    <button
+                      className="btnDanger"
+                      onClick={async () => {
+                        await mergeDoc(settingsDoc(uid), { homeAccounts: arrayRemove(view.name), hiddenAccounts: arrayUnion(view.name) })
+                        close()
+                      }}
+                    >
+                      Remove account
+                    </button>
+                  )}
+                  {view.type === 'account' && fixing === null && (
+                    <button className="btnGhost" onClick={() => setFixing(String(Math.round(total)))}>
+                      ✏️ Correct balance
+                    </button>
+                  )}
+                  {view.type === 'account' && Math.round(total) !== 0 && (
+                    <button
+                      className="btnPrimary"
+                      onClick={() => {
+                        close()
+                        setAdding('transfer')
+                      }}
+                    >
+                      🔁 Transfer out
+                    </button>
+                  )}
+                  {view.type === 'owner' && (
+                    <button
+                      className="btnPrimary"
+                      onClick={() => {
+                        const o = view.name
+                        close()
+                        setAdding('expense', o)
+                      }}
+                    >
+                      ↪️ Return / pay out
+                    </button>
+                  )}
                 </div>
               )}
             </Sheet>
           )
         })()}
-      {accSheet && (
-        <Sheet title={`${accountIcon(accSheet.account)} ${accSheet.account}`} onClose={() => setAccSheet(null)}>
-          <p className="sheetText">
-            Balance: <b>{rs(accSheet.total)}</b>
-          </p>
-          {Math.round(accSheet.total) !== 0 ? (
-            <>
-              <div className="errorBanner">
-                This account still has money. Move it to another account with a Transfer first (or edit its entries), then you can delete it.
-              </div>
-              <div className="sheetBtns">
-                <button className="btnGhost" onClick={() => setAccSheet(null)}>
-                  Close
-                </button>
-                <button
-                  className="btnPrimary"
-                  onClick={() => {
-                    setAccSheet(null)
-                    setAdding('transfer')
-                  }}
-                >
-                  🔁 Transfer money out
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="sheetText">Remove this account from your list? Old entries stay in your history.</p>
-              <div className="sheetBtns">
-                <button className="btnGhost" onClick={() => setAccSheet(null)}>
-                  Cancel
-                </button>
-                <button
-                  className="btnDanger"
-                  onClick={async () => {
-                    await mergeDoc(settingsDoc(uid), {
-                      homeAccounts: arrayRemove(accSheet.account),
-                      hiddenAccounts: arrayUnion(accSheet.account),
-                    })
-                    setAccSheet(null)
-                  }}
-                >
-                  🗑️ Delete account
-                </button>
-              </div>
-            </>
-          )}
-        </Sheet>
-      )}
       {adding && (
         <HomeForm
           uid={uid}
@@ -405,12 +458,35 @@ export function HomeSection({
           subtitle={`${deleting.type === 'income' ? 'Income' : deleting.type === 'expense' ? 'Expense' : 'Transfer'}${deleting.owner ? ` · ${deleting.owner}'s money` : ''}`}
           fields={[
             { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
+            ...(deleting.type === 'transfer'
+              ? ([
+                  { key: 'account', label: 'From account', kind: 'select', options: accounts.map((a) => ({ value: a, label: a })) },
+                  { key: 'toAccount', label: 'To account', kind: 'select', options: accounts.map((a) => ({ value: a, label: a })) },
+                ] as EditField[])
+              : ([
+                  { key: 'account', label: deleting.type === 'income' ? 'Received in' : 'Paid from', kind: 'select', options: accounts.map((a) => ({ value: a, label: a })) },
+                  {
+                    key: 'category',
+                    label: 'Category',
+                    kind: 'select',
+                    options: (deleting.type === 'income' ? HOME_INCOME : HOME_EXPENSE).concat('Balance correction').map((c) => ({ value: c, label: c })),
+                  },
+                ] as EditField[])),
+            {
+              key: 'owner',
+              label: 'Whose money',
+              kind: 'select',
+              options: [{ value: '', label: 'Mine' }, ...owners.map((o) => ({ value: o, label: o }))],
+            },
             { key: 'note', label: 'Note', kind: 'text' },
             { key: 'date', label: 'Date', kind: 'date' },
             { key: 'time', label: 'Time', kind: 'time' },
           ]}
-          initial={deleting}
-          onSave={(v) => patchItem(homeCol(uid), deleting.id, v)}
+          initial={{ ...deleting, account: accountOf(deleting), owner: deleting.owner ?? '' }}
+          onSave={(v) => {
+            const { owner, ...rest } = v
+            return patchItem(homeCol(uid), deleting.id, { ...rest, owner: owner ? owner : deleteField() })
+          }}
           onDelete={() => removeItem(homeCol(uid), deleting.id)}
           onClose={() => setDeleting(null)}
         />

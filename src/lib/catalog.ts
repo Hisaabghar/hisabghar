@@ -17,6 +17,7 @@ export const HOME_EXPENSE = [
 
 export const ICONS: Record<string, string> = {
   'Opening balance': '🏁',
+  'Balance correction': '🛠️',
   'Kept for someone': '🤲',
   'Returned to owner': '↪️',
   "Father's salary": '💼',
