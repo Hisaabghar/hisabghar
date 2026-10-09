@@ -5,7 +5,10 @@ import { bizCol, homeCol, loansCol, stockCol } from '../lib/paths'
 import { allByDate, useLiveQuery } from '../hooks/useData'
 import { MENTOR_SUGGESTIONS, answer, buildContext, needsSearch, type MentorAnswer } from '../lib/mentor'
 import type { GeminiReply } from '../lib/gemini'
-import { areAmountsHidden } from '../lib/format'
+import { areAmountsHidden, setAmountsHidden } from '../lib/format'
+import { PinGate } from './home/PinGate'
+import { mergeDoc } from '../hooks/useData'
+import { settingsDoc } from '../lib/paths'
 import { Segmented } from './ui/kit'
 
 type Msg = { from: 'me' | 'mentor'; text?: string; a?: MentorAnswer; ai?: GeminiReply; err?: string; loading?: boolean }
@@ -101,39 +104,44 @@ export function MentorPage({
   }
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
+  // Questions about the user's own data need the PIN once per visit to Mentor.
+  const [verified, setVerified] = useState(false)
+  const [pending, setPending] = useState<string | null>(null)
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [msgs])
 
-  async function ask(q: string) {
+  async function ask(q: string, ok = verified) {
     const question = q.trim()
     if (!question || busy) return
     setText('')
+    const general = needsSearch(question) // jobs, news, prices… — no personal data involved
+    if (!ok && !general) {
+      setPending(question)
+      return
+    }
     const data = {
-      biz: biz.items,
-      stock: stock.items,
-      home: homeUnlocked ? home.items : null,
-      loans: homeUnlocked ? loans.items : null,
+      biz: ok ? biz.items : [],
+      stock: ok ? stock.items : [],
+      home: ok || homeUnlocked ? home.items : null,
+      loans: ok || homeUnlocked ? loans.items : null,
       customs: (settings.customBiz ?? []).map((c) => c.name),
     }
     if (mode === 'offline') {
-      setMsgs((m) => [...m, { from: 'me', text: question }, { from: 'mentor', a: answer(question, data) }])
-      return
-    }
-    if (areAmountsHidden() && !homeUnlocked) {
-      setMsgs((m) => [
-        ...m,
-        { from: 'me', text: question },
-        { from: 'mentor', err: 'Amounts are hidden. Tap “Show amounts” at the top first, then ask again.' },
-      ])
+      // The PIN was entered, so answers show real amounts.
+      const was = areAmountsHidden()
+      if (ok) setAmountsHidden(false)
+      const a = answer(question, data)
+      setAmountsHidden(was)
+      setMsgs((m) => [...m, { from: 'me', text: question }, { from: 'mentor', a }])
       return
     }
     setMsgs((m) => [...m, { from: 'me', text: question }, { from: 'mentor', loading: true }])
     try {
       // Loaded on first use so the AI SDK doesn't slow down app start-up.
       const { askGemini } = await import('../lib/gemini')
-      const ai = await askGemini(question, buildContext(data), history, needsSearch(question))
+      const ai = await askGemini(question, ok ? buildContext(data) : 'No personal data shared for this question.', history, general)
       setHistory((h) =>
         [...h, { role: 'user', parts: [{ text: question }] } as Content, { role: 'model', parts: [{ text: ai.text }] } as Content].slice(-12),
       )
@@ -147,6 +155,11 @@ export function MentorPage({
     <div className="mentor">
       <div className="pageHead">
         <h1 className="pageTitle">🤖 Mentor</h1>
+        {verified && (
+          <button className="privacyBtn on" onClick={() => setVerified(false)}>
+            🔒 Lock Mentor
+          </button>
+        )}
         <Segmented
           options={[
             { id: 'offline', label: '🔒 Offline' },
@@ -238,6 +251,31 @@ export function MentorPage({
           Ask
         </button>
       </form>
+      {pending !== null && (
+        <div
+          className="overlay centered"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPending(null)
+          }}
+        >
+          <div className="pinModal">
+            <PinGate
+              pinHash={settings.pinHash}
+              hint={settings.pinHash ? 'Mentor needs your PIN to answer questions about your accounts' : undefined}
+              onUnlock={() => {
+                const q = pending
+                setVerified(true)
+                setPending(null)
+                void ask(q, true)
+              }}
+              onCreate={(pinHash) => mergeDoc(settingsDoc(uid), { pinHash })}
+            />
+            <button className="btnGhost full" onClick={() => setPending(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
