@@ -6,7 +6,7 @@ import { homeCol, loansCol, settingsDoc } from '../../lib/paths'
 import { addItem, allByDate, mergeDoc, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME, ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
-import { HomeForm, ME } from './HomeForm'
+import { HomeForm, ME, withExtra } from './HomeForm'
 import {
   QuickActions,
   Breakdown,
@@ -449,6 +449,7 @@ export function HomeSection({
           initialOwner={adding.owner === '' ? undefined : adding.owner}
           accounts={accounts}
           owners={owners}
+          extraCats={{ income: settings.incomeCats ?? [], expense: settings.expenseCats ?? [] }}
           onClose={() => setAdding(null)}
         />
       )}
@@ -469,7 +470,10 @@ export function HomeSection({
                     key: 'category',
                     label: 'Category',
                     kind: 'select',
-                    options: (deleting.type === 'income' ? HOME_INCOME : HOME_EXPENSE).concat('Balance correction').map((c) => ({ value: c, label: c })),
+                    options: (deleting.type === 'income'
+                      ? withExtra(HOME_INCOME, settings.incomeCats)
+                      : withExtra(HOME_EXPENSE, settings.expenseCats)
+                    ).concat('Balance correction').map((c) => ({ value: c, label: c })),
                   },
                 ] as EditField[])),
             {

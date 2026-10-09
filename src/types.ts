@@ -185,6 +185,9 @@ export interface Settings {
   homeAccounts?: string[]
   /** Accounts the user deleted; hidden from lists. */
   hiddenAccounts?: string[]
+  /** Extra home categories the user added. */
+  expenseCats?: string[]
+  incomeCats?: string[]
   /** People whose money the user keeps (uncle, father…). */
   owners?: string[]
   rates: Record<string, number>

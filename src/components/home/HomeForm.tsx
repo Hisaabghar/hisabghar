@@ -26,7 +26,7 @@ function PickerWithAdd({
   exclude,
 }: {
   uid: string
-  field: 'homeAccounts' | 'owners'
+  field: 'homeAccounts' | 'owners' | 'expenseCats' | 'incomeCats'
   addLabel: string
   placeholder: string
   accounts: string[]
@@ -95,11 +95,19 @@ function OwnerPicker({ uid, owners, value, onChange }: { uid: string; owners: st
   )
 }
 
+/** Built-in categories with the user's own added before "Other". */
+export function withExtra(base: string[], extra: string[] = []) {
+  const rest = base.filter((c) => c !== 'Other')
+  const add = extra.filter((c) => !base.includes(c))
+  return [...rest, ...add, ...(base.includes('Other') ? ['Other'] : [])]
+}
+
 export function HomeForm({
   uid,
   initialType,
   accounts,
   owners,
+  extraCats,
   initialOwner,
   onClose,
 }: {
@@ -108,6 +116,8 @@ export function HomeForm({
   accounts: string[]
   owners: string[]
   initialOwner?: string
+  /** Categories the user added (income and expense). */
+  extraCats?: { income: string[]; expense: string[] }
   onClose: () => void
 }) {
   const [type, setType] = useState<HomeType>(initialType)
@@ -121,7 +131,7 @@ export function HomeForm({
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today())
   const [time, setTime] = useState(nowTime())
-  const cats = type === 'income' ? HOME_INCOME : HOME_EXPENSE
+  const cats = type === 'income' ? withExtra(HOME_INCOME, extraCats?.income) : withExtra(HOME_EXPENSE, extraCats?.expense)
   const isTransfer = type === 'transfer'
 
   const title =
@@ -263,7 +273,15 @@ export function HomeForm({
         </Field>
       ) : (
         <Field label={type === 'income' ? (splitting ? 'Source of your part' : 'Source') : 'Spent on'}>
-          <Chips options={cats} value={category} onChange={setCategory} />
+          <PickerWithAdd
+            uid={uid}
+            field={type === 'income' ? 'incomeCats' : 'expenseCats'}
+            addLabel="+ Add category"
+            placeholder={type === 'income' ? 'e.g. Freelance, Rent received' : 'e.g. Gym, Committee, Charity'}
+            accounts={cats}
+            value={category}
+            onChange={setCategory}
+          />
         </Field>
       )}
       <Field label="Note (optional)">

@@ -185,6 +185,31 @@ export function SettingsSheet({
         </div>
       )}
 
+      {[...(settings.expenseCats ?? []), ...(settings.incomeCats ?? [])].length > 0 && (
+        <div className="settingsGroup">
+          <div className="settingsHead">Your home categories</div>
+          <div className="netList">
+            {(settings.expenseCats ?? []).map((n) => (
+              <span key={'e' + n} className="netChip custom">
+                🧾 {n}
+                <button aria-label={`Remove ${n}`} onClick={() => mergeDoc(settingsDoc(uid), { expenseCats: arrayRemove(n) })}>
+                  ×
+                </button>
+              </span>
+            ))}
+            {(settings.incomeCats ?? []).map((n) => (
+              <span key={'i' + n} className="netChip custom">
+                💰 {n}
+                <button aria-label={`Remove ${n}`} onClick={() => mergeDoc(settingsDoc(uid), { incomeCats: arrayRemove(n) })}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="statHint">Removing a category keeps old entries as they are.</div>
+        </div>
+      )}
+
       <div className="settingsGroup">
         <div className="settingsHead">Load networks</div>
         <div className="netList">
