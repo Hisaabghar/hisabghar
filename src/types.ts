@@ -183,6 +183,8 @@ export interface Settings {
   networks?: string[]
   /** Extra personal accounts (banks etc.) on top of cash, Easypaisa and JazzCash. */
   homeAccounts?: string[]
+  /** Accounts the user deleted; hidden from lists. */
+  hiddenAccounts?: string[]
   /** People whose money the user keeps (uncle, father…). */
   owners?: string[]
   rates: Record<string, number>

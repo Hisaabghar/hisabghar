@@ -124,7 +124,7 @@ export function SettingsSheet({
             className="btnPrimary"
             disabled={!acc.trim()}
             onClick={async () => {
-              await mergeDoc(settingsDoc(uid), { homeAccounts: arrayUnion(acc.trim()) })
+              await mergeDoc(settingsDoc(uid), { homeAccounts: arrayUnion(acc.trim()), hiddenAccounts: arrayRemove(acc.trim()) })
               setAcc('')
               setMsg('Account added ✓')
             }}

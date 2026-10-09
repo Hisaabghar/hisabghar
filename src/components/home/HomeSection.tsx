@@ -1,7 +1,9 @@
+import { arrayRemove, arrayUnion } from 'firebase/firestore'
+import { Sheet } from '../ui/Sheet'
 import { useState } from 'react'
 import type { HomeEntry, HomeType, LoanEntry, Period, Settings } from '../../types'
-import { homeCol, loansCol } from '../../lib/paths'
-import { allByDate, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
+import { homeCol, loansCol, settingsDoc } from '../../lib/paths'
+import { allByDate, mergeDoc, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
 import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
 import { ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
 import { HomeForm, ME } from './HomeForm'
@@ -100,7 +102,11 @@ export function HomeSection({
   const inPeriod = all.filter((e) => inRange(e.date, range))
   const before = all.filter((e) => e.date < range[0])
 
-  const accounts = allHomeAccounts([...(settings.homeAccounts ?? []), ...all.flatMap((e) => [e.account ?? '', e.toAccount ?? ''])])
+  const hidden = new Set(settings.hiddenAccounts ?? [])
+  const accounts = allHomeAccounts([...(settings.homeAccounts ?? []), ...all.flatMap((e) => [e.account ?? '', e.toAccount ?? ''])]).filter(
+    (a) => !hidden.has(a),
+  )
+  const [accSheet, setAccSheet] = useState<{ account: string; total: number } | null>(null)
   const owners = [...new Set([...(settings.owners ?? []), ...all.map((e) => e.owner ?? '').filter(Boolean)])]
   const held = holdings(all, accounts, range[1])
   const othersHeld = [...held.owners.entries()].filter(([o, v]) => o !== ME && Math.round(v.total) !== 0)
@@ -156,6 +162,7 @@ export function HomeSection({
                   value={a.total}
                   tone={a.total < 0 ? 'out' : undefined}
                   hint={Math.round(a.others) !== 0 ? `Mine ${rs(a.mine)} · Others ${rs(a.others)}` : undefined}
+                  onClick={() => setAccSheet({ account: a.account, total: a.total })}
                 />
               ))}
             </StatGrid>
@@ -259,6 +266,55 @@ export function HomeSection({
 
       {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
+      {accSheet && (
+        <Sheet title={`${accountIcon(accSheet.account)} ${accSheet.account}`} onClose={() => setAccSheet(null)}>
+          <p className="sheetText">
+            Balance: <b>{rs(accSheet.total)}</b>
+          </p>
+          {Math.round(accSheet.total) !== 0 ? (
+            <>
+              <div className="errorBanner">
+                This account still has money. Move it to another account with a Transfer first (or edit its entries), then you can delete it.
+              </div>
+              <div className="sheetBtns">
+                <button className="btnGhost" onClick={() => setAccSheet(null)}>
+                  Close
+                </button>
+                <button
+                  className="btnPrimary"
+                  onClick={() => {
+                    setAccSheet(null)
+                    setAdding('transfer')
+                  }}
+                >
+                  🔁 Transfer money out
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="sheetText">Remove this account from your list? Old entries stay in your history.</p>
+              <div className="sheetBtns">
+                <button className="btnGhost" onClick={() => setAccSheet(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="btnDanger"
+                  onClick={async () => {
+                    await mergeDoc(settingsDoc(uid), {
+                      homeAccounts: arrayRemove(accSheet.account),
+                      hiddenAccounts: arrayUnion(accSheet.account),
+                    })
+                    setAccSheet(null)
+                  }}
+                >
+                  🗑️ Delete account
+                </button>
+              </div>
+            </>
+          )}
+        </Sheet>
+      )}
       {adding && (
         <HomeForm
           uid={uid}

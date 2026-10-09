@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { arrayUnion } from 'firebase/firestore'
+import { arrayRemove, arrayUnion } from 'firebase/firestore'
 import type { HomeType } from '../../types'
 import { homeCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
@@ -62,7 +62,7 @@ function PickerWithAdd({
             disabled={!adding.trim()}
             onClick={async () => {
               const name = adding.trim()
-              await mergeDoc(settingsDoc(uid), { [field]: arrayUnion(name) })
+              await mergeDoc(settingsDoc(uid), { [field]: arrayUnion(name), ...(field === 'homeAccounts' ? { hiddenAccounts: arrayRemove(name) } : {}) })
               onChange(name)
               setAdding(null)
             }}
