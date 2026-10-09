@@ -107,6 +107,8 @@ export function HomeSection({
     (a) => !hidden.has(a),
   )
   const [accSheet, setAccSheet] = useState<{ account: string; total: number } | null>(null)
+  const [ownerSheet, setOwnerSheet] = useState<string | null>(null)
+  const [wipeOwner, setWipeOwner] = useState(false)
   const owners = [...new Set([...(settings.owners ?? []), ...all.map((e) => e.owner ?? '').filter(Boolean)])]
   const held = holdings(all, accounts, range[1])
   const othersHeld = [...held.owners.entries()].filter(([o, v]) => o !== ME && Math.round(v.total) !== 0)
@@ -184,7 +186,7 @@ export function HomeSection({
                   sub={v.where.map(([acc, amt]) => `${acc} ${rs(amt)}`).join(' · ') || 'Nothing held'}
                   amount={rs(v.total)}
                   tone={o === ME ? 'in' : undefined}
-                  onClick={o === ME ? undefined : () => setAdding('expense', o)}
+                  onClick={o === ME ? undefined : () => setOwnerSheet(o)}
                 />
               ))}
             </List>
@@ -266,6 +268,78 @@ export function HomeSection({
 
       {tab !== 'udhaar' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 
+      {ownerSheet &&
+        !deleting &&
+        (() => {
+          const list = all.filter((e) => e.owner === ownerSheet)
+          const total = sum(list, (e) => (e.type === 'income' ? e.amount : e.type === 'expense' ? -e.amount : 0))
+          return (
+            <Sheet
+              title={`${ownerSheet}'s money`}
+              onClose={() => {
+                setOwnerSheet(null)
+                setWipeOwner(false)
+              }}
+            >
+              <p className="sheetText">
+                Holding now: <b>{rs(total)}</b> · tap an entry to edit or delete it.
+              </p>
+              <List empty="No entries.">
+                {list.map((e) => (
+                  <Row
+                    key={e.id}
+                    icon={e.type === 'income' ? '📥' : e.type === 'expense' ? '📤' : '🔁'}
+                    title={e.type === 'income' ? `Kept in ${accountOf(e)}` : e.type === 'expense' ? `Paid out of ${accountOf(e)}` : `${accountOf(e)} → ${e.toAccount}`}
+                    sub={[e.category, e.note].filter(Boolean).join(' · ')}
+                    amount={(e.type === 'income' ? '+' : e.type === 'expense' ? '−' : '') + rs(e.amount)}
+                    amountSub={`${shortDate(e.date)}${e.time ? ' · ' + e.time : ''}`}
+                    tone={e.type === 'income' ? 'in' : e.type === 'expense' ? 'out' : undefined}
+                    onClick={() => setDeleting(e)}
+                  />
+                ))}
+              </List>
+              {wipeOwner ? (
+                <>
+                  <div className="errorBanner">
+                    Delete all {list.length} entries of {ownerSheet}? Their {rs(total)} will no longer show in your accounts. This can’t be undone.
+                  </div>
+                  <div className="sheetBtns">
+                    <button className="btnGhost" onClick={() => setWipeOwner(false)}>
+                      Back
+                    </button>
+                    <button
+                      className="btnDanger"
+                      onClick={async () => {
+                        for (const e of list) await removeItem(homeCol(uid), e.id)
+                        await mergeDoc(settingsDoc(uid), { owners: arrayRemove(ownerSheet) })
+                        setWipeOwner(false)
+                        setOwnerSheet(null)
+                      }}
+                    >
+                      Yes, delete all
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="sheetBtns">
+                  <button className="btnGhost delOutline" onClick={() => setWipeOwner(true)}>
+                    🗑️ Delete all
+                  </button>
+                  <button
+                    className="btnPrimary"
+                    onClick={() => {
+                      const o = ownerSheet
+                      setOwnerSheet(null)
+                      setAdding('expense', o)
+                    }}
+                  >
+                    ↪️ Return / pay out money
+                  </button>
+                </div>
+              )}
+            </Sheet>
+          )
+        })()}
       {accSheet && (
         <Sheet title={`${accountIcon(accSheet.account)} ${accSheet.account}`} onClose={() => setAccSheet(null)}>
           <p className="sheetText">
