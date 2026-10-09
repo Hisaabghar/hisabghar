@@ -25,6 +25,24 @@ type Section = 'home' | 'biz' | 'mentor'
 
 type User = { id: string; email: string | null; name: string | null; photo: string | null }
 
+const PRIVACY_KEY = 'mk-privacy'
+const HIDDEN_KEY = 'mk-hidden'
+function readFlag(key: string, fallback: boolean) {
+  try {
+    const v = localStorage.getItem(key)
+    return v === null ? fallback : v === '1'
+  } catch {
+    return fallback
+  }
+}
+function writeFlag(key: string, v: boolean) {
+  try {
+    localStorage.setItem(key, v ? '1' : '0')
+  } catch {
+    // ignore
+  }
+}
+
 function greeting() {
   const h = new Date().getHours()
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
@@ -50,9 +68,21 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [unlocked, setUnlocked] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [addingBiz, setAddingBiz] = useState(false)
-  // Amounts start hidden every time the app opens, so nobody nearby sees them.
-  const [hidden, setHidden] = useState(true)
-  const [askPin, setAskPin] = useState(false)
+  // Privacy mode and the show/hide choice are remembered on this device until changed.
+  const [privacy, setPrivacyState] = useState(() => readFlag(PRIVACY_KEY, true))
+  const [hiddenPref, setHiddenPref] = useState(() => readFlag(HIDDEN_KEY, true))
+  const hidden = privacy && hiddenPref
+  const setHidden = (v: boolean) => {
+    setHiddenPref(v)
+    writeFlag(HIDDEN_KEY, v)
+  }
+  const setPrivacy = (v: boolean) => {
+    setPrivacyState(v)
+    writeFlag(PRIVACY_KEY, v)
+    if (v) setHidden(true)
+  }
+  // What to do after the PIN is entered: show amounts, or switch privacy mode off.
+  const [askPin, setAskPin] = useState<false | 'show' | 'disable'>(false)
   // Inside unlocked Home Accounts the PIN was already entered, so amounts show there.
   const homeOpen = section === 'home' && unlocked
   const masked = hidden && !homeOpen
@@ -160,10 +190,10 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             <button className="privacyBtn on" onClick={() => setUnlocked(false)} title="Lock Home Accounts">
               🔒 Lock
             </button>
-          ) : (
+          ) : !privacy ? null : (
             <button
               className={`privacyBtn ${hidden ? '' : 'on'}`}
-              onClick={() => (hidden ? setAskPin(true) : setHidden(true))}
+              onClick={() => (hidden ? setAskPin('show') : setHidden(true))}
               title={hidden ? 'Show amounts' : 'Hide amounts'}
             >
               {hidden ? '👁 Show amounts' : '🙈 Hide amounts'}
@@ -233,8 +263,9 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           <div className="pinModal">
             <PinGate
               pinHash={settings.pinHash}
-              hint={settings.pinHash ? 'Enter your PIN to show amounts' : undefined}
+              hint={settings.pinHash ? (askPin === 'disable' ? 'Enter your PIN to turn privacy mode off' : 'Enter your PIN to show amounts') : undefined}
               onUnlock={() => {
+                if (askPin === 'disable') setPrivacy(false)
                 setHidden(false)
                 setAskPin(false)
               }}
@@ -255,6 +286,14 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           onClose={() => setShowSettings(false)}
           onSignOut={onSignOut}
           onPinReset={() => setUnlocked(false)}
+          privacy={privacy}
+          onPrivacyChange={(on) => {
+            if (on) setPrivacy(true)
+            else {
+              setShowSettings(false)
+              setAskPin('disable')
+            }
+          }}
         />
       )}
     </div>

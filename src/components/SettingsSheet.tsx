@@ -16,7 +16,11 @@ export function SettingsSheet({
   onClose,
   onSignOut,
   onPinReset,
+  privacy,
+  onPrivacyChange,
 }: {
+  privacy: boolean
+  onPrivacyChange: (on: boolean) => void
   uid: string
   email: string | null
   settings: Settings
@@ -89,6 +93,15 @@ export function SettingsSheet({
           />
           🔊 Click sounds (this device)
         </label>
+        <label className="checkRow soundRow">
+          <input type="checkbox" checked={privacy} onChange={(e) => onPrivacyChange(e.target.checked)} />
+          🙈 Privacy mode — hide amounts behind “Show amounts” (this device)
+        </label>
+        <div className="statHint">
+          {privacy
+            ? 'On: amounts stay hidden or shown exactly as you last left them, even after closing the app.'
+            : 'Off: amounts are always shown. Turning it off asks for your PIN.'}
+        </div>
       </div>
 
       <div className="settingsGroup">
