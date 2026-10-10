@@ -190,8 +190,30 @@ export interface Bill {
   paid?: string[]
 }
 
+/** A bill/invoice given to a customer (saved so it can be shared again). */
+export interface Invoice {
+  id: string
+  no: number
+  date: string
+  customer: string
+  phone?: string
+  items: { name: string; qty: number; price: number }[]
+  discount: number
+  /** Amount the customer has paid. */
+  paid: number
+  note?: string
+  createdAt: number
+}
+
 export interface Settings {
   customBiz?: CustomBiz[]
+  /** Shop logo as a small image data URL. */
+  logo?: string
+  ownerName?: string
+  phone?: string
+  address?: string
+  /** Last invoice number used. */
+  invoiceNo?: number
   pinHash?: string
   /** Ask for the PIN to open Home Accounts (default on). */
   homeLock?: boolean

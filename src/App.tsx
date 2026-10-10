@@ -113,7 +113,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     .join('')
   const brand = (
     <div className="brand">
-      <div className="mark">{initials}</div>
+      <div className={`mark ${settings.logo ? 'hasLogo' : ''}`}>{settings.logo ? <img src={settings.logo} alt="" /> : initials}</div>
       <div className="brandText">
         <div className="title">{bizName || 'Mera Khata'}</div>
         <div className="subtitle">{bizName ? 'Powered by Mera Khata' : 'Home & shop accounts'}</div>

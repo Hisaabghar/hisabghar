@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import type { Product } from '../../types'
-import { bizCol, creditCol } from '../../lib/paths'
-import { addItem } from '../../hooks/useData'
+import { useRef, useState } from 'react'
+import type { Product, Settings } from '../../types'
+import { bizCol, creditCol, settingsDoc } from '../../lib/paths'
+import { addItem, useLiveDoc } from '../../hooks/useData'
+import { PdfReady, makeInvoice } from './DocsTab'
 import { rsRaw } from '../../lib/format'
 import { batchesOf, takeFifo, takeStock } from '../../lib/stock'
 import { Field, FormSheet, MoneyInput, Segmented, num } from '../ui/kit'
@@ -29,6 +30,10 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
   const [pay, setPay] = useState<'now' | 'credit'>('now')
   const onCredit = pay === 'credit'
   const [date, setDate] = useState(initialDate)
+  const [makeBill, setMakeBill] = useState(false)
+  const settings = useLiveDoc<Settings>(settingsDoc(uid), `settings-${uid}`).data
+  const [ready, setReady] = useState<Awaited<ReturnType<typeof makeInvoice>> | null>(null)
+  const billMade = useRef(false)
   const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name))
 
   const set = (key: number, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
@@ -48,10 +53,14 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
   }
   const totalCost = valid.reduce((s, l) => s + costOf(l), 0)
 
+  if (ready) return <PdfReady ready={ready} onClose={onClose} />
+
   return (
     <FormSheet
       title="🛒 New sale"
-      onClose={onClose}
+      onClose={() => {
+        if (!billMade.current) onClose()
+      }}
       canSave={valid.length > 0 && (!onCredit || !!customer.trim())}
       onSave={async () => {
         const saleId = newSaleId()
@@ -91,6 +100,23 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
             note: itemsText,
             date,
           })
+        if (makeBill) {
+          billMade.current = true
+          setReady(
+            await makeInvoice(uid, { rates: {}, ...settings }, {
+              customer: customer.trim(),
+              ...(phone.trim() ? { phone: phone.trim() } : {}),
+              date,
+              items: valid.map((l) => ({
+                name: products.find((x) => x.id === l.productId)?.name ?? l.name.trim(),
+                qty: Math.max(1, num(l.qty)),
+                price: num(l.price),
+              })),
+              discount: Math.round(discount),
+              paid: onCredit ? 0 : Math.round(total),
+            }),
+          )
+        }
       }}
     >
       {lines.map((l, i) => {
@@ -208,6 +234,10 @@ export function SellSheet({ uid, products, date: initialDate, onClose }: { uid: 
       <Field label="Date">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </Field>
+      <label className="checkRow soundRow">
+        <input type="checkbox" checked={makeBill} onChange={(e) => setMakeBill(e.target.checked)} />
+        📄 Make a bill (PDF) for the customer
+      </label>
     </FormSheet>
   )
 }

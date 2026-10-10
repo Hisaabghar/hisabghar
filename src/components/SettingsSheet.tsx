@@ -8,6 +8,7 @@ import { sha256 } from '../lib/format'
 import { setSoundOn, soundOn } from '../lib/sound'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
+import { resizeImage } from '../lib/pdf'
 
 export function SettingsSheet({
   uid,
@@ -36,6 +37,10 @@ export function SettingsSheet({
     Object.fromEntries(COPY_TYPES.map((t) => [t, String(settings.rates[t] ?? '')])),
   )
   const [bizName, setBizName] = useState(settings.businessName ?? '')
+  const [ownerName, setOwnerName] = useState(settings.ownerName ?? '')
+  const [phone, setPhone] = useState(settings.phone ?? '')
+  const [address, setAddress] = useState(settings.address ?? '')
+  const [logo, setLogo] = useState(settings.logo ?? '')
   const [sound, setSound] = useState(soundOn())
   const [oldPin, setOldPin] = useState('')
   const [pinStep, setPinStep] = useState<'old' | 'new'>('old')
@@ -55,9 +60,15 @@ export function SettingsSheet({
 
   async function saveName() {
     setBusy(true)
-    await mergeDoc(settingsDoc(uid), { businessName: bizName.trim() })
+    await mergeDoc(settingsDoc(uid), {
+      businessName: bizName.trim(),
+      ownerName: ownerName.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      logo,
+    })
     setBusy(false)
-    setMsg('Business name saved ✓')
+    setMsg('Shop profile saved ✓')
   }
 
   async function checkOldPin() {
@@ -109,12 +120,51 @@ export function SettingsSheet({
       </div>
 
       <div className="settingsGroup">
-        <div className="settingsHead">Business name</div>
-        <Field label="Shown at the top of the app">
+        <div className="settingsHead">Shop profile — logo, name & phone</div>
+        <div className="logoRow">
+          <div className="logoPreview">{logo ? <img src={logo} alt="Shop logo" /> : <span>Logo</span>}</div>
+          <div className="logoBtns">
+            <label className="btnGhost">
+              {logo ? 'Change logo' : '＋ Add logo'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={async (e) => {
+                  const f = e.target.files?.[0]
+                  e.target.value = ''
+                  if (!f) return
+                  try {
+                    setLogo(await resizeImage(f))
+                  } catch (err) {
+                    setMsg((err as Error).message)
+                  }
+                }}
+              />
+            </label>
+            {logo && (
+              <button className="btnGhost" onClick={() => setLogo('')}>
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+        <Field label="Business name (top of the app, bills & letter pad)">
           <input value={bizName} onChange={(e) => setBizName(e.target.value)} placeholder="e.g. Aslam Mobile & Photostat" maxLength={40} />
         </Field>
+        <div className="twoFields">
+          <Field label="Owner name">
+            <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Your name" maxLength={40} />
+          </Field>
+          <Field label="Phone">
+            <input inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03xx xxxxxxx" maxLength={30} />
+          </Field>
+        </div>
+        <Field label="Address (optional)">
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Shop address, city" maxLength={90} />
+        </Field>
         <button className="btnPrimary full" disabled={busy} onClick={saveName}>
-          Save name
+          Save shop profile
         </button>
       </div>
 

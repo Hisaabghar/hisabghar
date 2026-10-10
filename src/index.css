@@ -1106,7 +1106,8 @@ button {
   margin-bottom: 6px;
 }
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -1117,7 +1118,8 @@ button {
   font-family: var(--font);
 }
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   outline: none;
   border-color: var(--brand-2);
   box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
@@ -2568,4 +2570,78 @@ button {
   font-size: 11.5px;
   margin-bottom: 12px;
   text-align: center;
+}
+
+/* Shop logo */
+.mark.hasLogo {
+  background: #fff;
+  overflow: hidden;
+  padding: 2px;
+}
+.mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.logoPreview {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--line);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+.logoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.logoBtns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.logoBtns label {
+  cursor: pointer;
+}
+
+/* Bills & letters */
+.field textarea {
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+.billLine {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px 4px;
+  margin-bottom: 10px;
+}
+.billLine .linkBtn {
+  margin-bottom: 8px;
+}
+.saleTotal {
+  margin: 6px 0 4px;
+  font-size: 13px;
+  text-align: right;
+}
+.saleTotal b {
+  font-size: 16px;
+}
+.pdfBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
