@@ -8,7 +8,7 @@ import { sha256 } from '../lib/format'
 import { setSoundOn, soundOn } from '../lib/sound'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
-import { resizeImage } from '../lib/pdf'
+import { BILL_COLORS, resizeImage } from '../lib/pdf'
 
 export function SettingsSheet({
   uid,
@@ -41,6 +41,34 @@ export function SettingsSheet({
   const [phone, setPhone] = useState(settings.phone ?? '')
   const [address, setAddress] = useState(settings.address ?? '')
   const [logo, setLogo] = useState(settings.logo ?? '')
+  const [bill, setBill] = useState({
+    tagline: settings.tagline ?? '',
+    ntn: settings.ntn ?? '',
+    bankTitle: settings.bankTitle ?? '',
+    iban: settings.iban ?? '',
+    bankName: settings.bankName ?? '',
+    payTerms: settings.payTerms ?? '',
+    signature: settings.signature ?? '',
+    stamp: settings.stamp ?? '',
+    billColor: settings.billColor ?? BILL_COLORS[0].hex,
+  })
+  const setB = (patch: Partial<typeof bill>) => setBill((b) => ({ ...b, ...patch }))
+  async function saveBill() {
+    setBusy(true)
+    await mergeDoc(settingsDoc(uid), Object.fromEntries(Object.entries(bill).map(([k, v]) => [k, v.trim()])))
+    setBusy(false)
+    setMsg('Bill design saved ✓')
+  }
+  const pickImage = (key: 'signature' | 'stamp') => async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    try {
+      setB({ [key]: await resizeImage(f, 400) })
+    } catch (err) {
+      setMsg((err as Error).message)
+    }
+  }
   const [sound, setSound] = useState(soundOn())
   const [oldPin, setOldPin] = useState('')
   const [pinStep, setPinStep] = useState<'old' | 'new'>('old')
@@ -165,6 +193,68 @@ export function SettingsSheet({
         </Field>
         <button className="btnPrimary full" disabled={busy} onClick={saveName}>
           Save shop profile
+        </button>
+      </div>
+
+      <div className="settingsGroup">
+        <div className="settingsHead">Bill design (PDF bills)</div>
+        <Field label="Colour">
+          <div className="colorPick">
+            {BILL_COLORS.map((c) => (
+              <button
+                key={c.hex}
+                type="button"
+                title={c.name}
+                className={`colorDot ${bill.billColor === c.hex ? 'active' : ''}`}
+                style={{ background: c.hex }}
+                onClick={() => setB({ billColor: c.hex })}
+              />
+            ))}
+          </div>
+        </Field>
+        <Field label="Tagline bar (Deals in…)">
+          <input value={bill.tagline} onChange={(e) => setB({ tagline: e.target.value })} placeholder="Deals In: Mobile accessories, Load, Easypaisa…" maxLength={110} />
+        </Field>
+        <Field label="NTN (optional)">
+          <input value={bill.ntn} onChange={(e) => setB({ ntn: e.target.value })} placeholder="e.g. 1234567-8" maxLength={30} />
+        </Field>
+        <div className="twoFields">
+          <Field label="Bank account title">
+            <input value={bill.bankTitle} onChange={(e) => setB({ bankTitle: e.target.value })} placeholder="Account name" maxLength={60} />
+          </Field>
+          <Field label="Bank name">
+            <input value={bill.bankName} onChange={(e) => setB({ bankName: e.target.value })} placeholder="e.g. Meezan Bank" maxLength={40} />
+          </Field>
+        </div>
+        <Field label="IBAN / account number">
+          <input value={bill.iban} onChange={(e) => setB({ iban: e.target.value })} placeholder="PK.. or account / Easypaisa number" maxLength={40} />
+        </Field>
+        <Field label="Payment terms (optional)">
+          <input value={bill.payTerms} onChange={(e) => setB({ payTerms: e.target.value })} placeholder="e.g. 100% Advance" maxLength={60} />
+        </Field>
+        <div className="twoFields">
+          {(['signature', 'stamp'] as const).map((k) => (
+            <Field key={k} label={k === 'signature' ? 'Signature picture' : 'Stamp (mohar) picture'}>
+              <div className="logoRow">
+                <div className="logoPreview">{bill[k] ? <img src={bill[k]} alt="" /> : <span>None</span>}</div>
+                <div className="logoBtns">
+                  <label className="btnGhost">
+                    {bill[k] ? 'Change' : '＋ Add'}
+                    <input type="file" accept="image/*" hidden onChange={pickImage(k)} />
+                  </label>
+                  {bill[k] && (
+                    <button className="btnGhost" onClick={() => setB({ [k]: '' })}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Field>
+          ))}
+        </div>
+        <div className="statHint">Tip: sign on white paper and take a clear photo; same for your stamp.</div>
+        <button className="btnPrimary full" disabled={busy} onClick={saveBill}>
+          Save bill design
         </button>
       </div>
 

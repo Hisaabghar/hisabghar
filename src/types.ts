@@ -197,8 +197,11 @@ export interface Invoice {
   date: string
   customer: string
   phone?: string
-  items: { name: string; qty: number; price: number }[]
+  /** qty 0 = a lump-sum line (e.g. courier charges) shown without qty/rate. */
+  items: { name: string; qty: number; price: number; detail?: string }[]
   discount: number
+  /** Heading printed on top, e.g. "BILL / DELIVERY CHALLAN". */
+  title?: string
   /** Amount the customer has paid. */
   paid: number
   note?: string
@@ -212,6 +215,16 @@ export interface Settings {
   ownerName?: string
   phone?: string
   address?: string
+  /** Bill design: tagline bar, NTN, bank details, signature & stamp images, colour. */
+  tagline?: string
+  ntn?: string
+  bankTitle?: string
+  iban?: string
+  bankName?: string
+  payTerms?: string
+  signature?: string
+  stamp?: string
+  billColor?: string
   /** Last invoice number used. */
   invoiceNo?: number
   pinHash?: string

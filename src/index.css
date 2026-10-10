@@ -2645,3 +2645,20 @@ button {
   flex-direction: column;
   gap: 8px;
 }
+.colorPick {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.colorDot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.colorDot.active {
+  border-color: var(--surface);
+  box-shadow: 0 0 0 2.5px var(--text);
+}

@@ -6,7 +6,7 @@ import { invoiceCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc, removeItem, useLiveQuery } from '../../hooks/useData'
 import { rs, rsRaw, shortDate, today } from '../../lib/format'
 import { downloadPdf, invoicePdf, invoiceTotals, letterPdf, sharePdf, type Profile } from '../../lib/pdf'
-import { Card, ConfirmDelete, Field, FormSheet, List, MoneyInput, QuickActions, Row, Segmented, cleanNumber, num } from '../ui/kit'
+import { Card, Chips, ConfirmDelete, Field, FormSheet, List, MoneyInput, QuickActions, Row, Segmented, cleanNumber, num } from '../ui/kit'
 import { Sheet } from '../ui/Sheet'
 
 export const profileOf = (s: Settings): Profile => ({
@@ -15,7 +15,19 @@ export const profileOf = (s: Settings): Profile => ({
   ownerName: s.ownerName,
   phone: s.phone,
   address: s.address,
+  tagline: s.tagline,
+  ntn: s.ntn,
+  bankTitle: s.bankTitle,
+  iban: s.iban,
+  bankName: s.bankName,
+  payTerms: s.payTerms,
+  signature: s.signature,
+  stamp: s.stamp,
+  billColor: s.billColor,
 })
+
+export const BILL_TITLES = ['BILL / INVOICE', 'BILL / DELIVERY CHALLAN', 'CASH RECEIPT', 'QUOTATION', 'DELIVERY CHALLAN']
+const itemText = (i: { name: string; qty: number }) => (i.qty > 0 ? `${i.name} ×${i.qty}` : i.name)
 
 type Ready = { doc: jsPDF; name: string; text?: string }
 
@@ -80,7 +92,7 @@ export function DocsTab({ uid, settings, products }: { uid: string; settings: Se
                 key={inv.id}
                 icon="🧾"
                 title={`#${inv.no} · ${inv.customer || 'Walk-in customer'}`}
-                sub={inv.items.map((i) => `${i.name} ×${i.qty}`).join(', ')}
+                sub={inv.items.map(itemText).join(', ')}
                 amount={rs(t.total)}
                 amountSub={`${shortDate(inv.date)} · ${t.due > 0 ? 'Unpaid ' + rs(t.due) : 'Paid'}`}
                 tone={t.due > 0 ? 'out' : 'in'}
@@ -107,7 +119,7 @@ export function DocsTab({ uid, settings, products }: { uid: string; settings: Se
       {open && (
         <Sheet title={`Bill #${open.no} · ${open.customer || 'Walk-in customer'}`} onClose={() => setOpen(null)}>
           <p className="sheetText">
-            {open.items.map((i) => `${i.name} ×${i.qty}`).join(', ')} — total {rs(invoiceTotals(open).total)}
+            {open.items.map(itemText).join(', ')} — total {rs(invoiceTotals(open).total)}
           </p>
           <div className="sheetBtns">
             <button className="btnDanger" onClick={() => setDeleting(open)}>
@@ -164,11 +176,12 @@ export function PdfReady({ ready, onClose }: { ready: Ready; onClose: () => void
 interface Line {
   key: number
   name: string
+  detail: string
   qty: string
   price: string
 }
 let nextKey = 1
-const blank = (): Line => ({ key: nextKey++, name: '', qty: '1', price: '' })
+const blank = (): Line => ({ key: nextKey++, name: '', detail: '', qty: '1', price: '' })
 
 function InvoiceSheet({
   products,
@@ -188,7 +201,11 @@ function InvoiceSheet({
   const [paidAmt, setPaidAmt] = useState('')
   const [note, setNote] = useState('')
   const set = (key: number, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
-  const items = lines.filter((l) => l.name.trim() && num(l.price) > 0).map((l) => ({ name: l.name.trim(), qty: Math.max(1, num(l.qty)), price: num(l.price) }))
+  const [title, setTitle] = useState(BILL_TITLES[0])
+  // Empty qty = a lump-sum line such as courier charges.
+  const items = lines
+    .filter((l) => l.name.trim() && num(l.price) > 0)
+    .map((l) => ({ name: l.name.trim(), qty: num(l.qty), price: num(l.price), ...(l.detail.trim() ? { detail: l.detail.trim() } : {}) }))
   const { subtotal, total } = invoiceTotals({ items, discount: num(disc), paid: 0 })
   const paid = pay === 'paid' ? total : pay === 'unpaid' ? 0 : Math.min(total, num(paidAmt))
 
@@ -201,6 +218,7 @@ function InvoiceSheet({
         onSave({
           customer: customer.trim(),
           ...(phone.trim() ? { phone: phone.trim() } : {}),
+          title,
           date,
           items,
           discount: Math.min(subtotal, num(disc)),
@@ -219,6 +237,9 @@ function InvoiceSheet({
       </div>
       <Field label="Date">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value || today())} />
+      </Field>
+      <Field label="Heading on the bill">
+        <Chips options={BILL_TITLES} value={title} onChange={setTitle} />
       </Field>
       <datalist id="billProducts">
         {products.map((p) => (
@@ -239,11 +260,14 @@ function InvoiceSheet({
               maxLength={80}
             />
           </Field>
+          <Field label="Detail (optional, small line under the item)">
+            <input value={l.detail} onChange={(e) => set(l.key, { detail: e.target.value })} placeholder="e.g. Length: 39 inch, Colour: black" maxLength={80} />
+          </Field>
           <div className="twoFields">
-            <Field label="Qty">
-              <input inputMode="numeric" value={l.qty} onChange={(e) => set(l.key, { qty: cleanNumber(e.target.value) })} />
+            <Field label="Qty (empty = fixed charge)">
+              <input inputMode="numeric" value={l.qty} onChange={(e) => set(l.key, { qty: cleanNumber(e.target.value) })} placeholder="—" />
             </Field>
-            <Field label="Rate">
+            <Field label={num(l.qty) > 0 ? 'Rate' : 'Amount'}>
               <MoneyInput value={l.price} onChange={(v) => set(l.key, { price: v })} />
             </Field>
           </div>
