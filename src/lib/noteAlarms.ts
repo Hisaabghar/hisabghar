@@ -1,4 +1,5 @@
 import type { Note, Repeat } from '../types'
+import { isNative } from './saveFile'
 
 const CACHE = 'mk-v1'
 const NOTES_URL = '/__mk/notes.json'
@@ -16,6 +17,10 @@ export function nextTime(at: number, repeat: Repeat | undefined, now = Date.now(
 }
 
 export async function askNotifyPermission() {
+  if (isNative()) {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    return (await LocalNotifications.requestPermissions()).display === 'granted'
+  }
   if (!('Notification' in window)) return false
   if (Notification.permission === 'granted') return true
   if (Notification.permission === 'denied') return false
@@ -23,6 +28,8 @@ export async function askNotifyPermission() {
 }
 
 export async function showNote(n: Note) {
+  // The Android app already scheduled this alarm with the phone.
+  if (isNative()) return
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   const title = `⏰ ${n.title || 'Reminder'}`
   const body = n.text.slice(0, 140) || 'Mera Khata note'

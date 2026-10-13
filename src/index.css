@@ -2874,3 +2874,38 @@ a.btnGhost {
 .linkBtn.danger {
   color: #b91c1c;
 }
+.emailLogin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.emailLogin input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: var(--font);
+}
+.authHelp {
+  line-height: 1.5;
+  text-align: center;
+}
+.settingsSub {
+  font-weight: 700;
+  font-size: 12.5px;
+  margin: 14px 0 4px;
+}
+.okTag {
+  color: var(--in-text);
+  font-size: 11px;
+  margin-left: 6px;
+}
+a.btnPrimary {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

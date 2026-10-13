@@ -1,5 +1,6 @@
 import type { Bill } from '../types'
 import { rsRaw, toISO } from './format'
+import { isNative } from './saveFile'
 
 const NOTIFY_KEY = 'mk-bill-notify'
 const CACHE = 'mk-v1'
@@ -43,7 +44,10 @@ export function notifyOn() {
 }
 
 export async function setNotify(on: boolean): Promise<boolean> {
-  if (on) {
+  if (on && isNative()) {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    if ((await LocalNotifications.requestPermissions()).display !== 'granted') return false
+  } else if (on) {
     if (!('Notification' in window)) return false
     const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission()
     if (perm !== 'granted') return false
@@ -76,6 +80,7 @@ export async function checkBills(bills: Bill[]) {
   } catch {
     // ignore
   }
+  if (isNative()) return void (await import('./native')).scheduleBillAlarms(notifyOn() ? bills : [])
   if (!notifyOn() || !('Notification' in window) || Notification.permission !== 'granted') return
   const day = toISO(new Date())
   for (const x of billsDue(bills)) {

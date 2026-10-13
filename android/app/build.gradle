@@ -7,8 +7,9 @@ android {
         applicationId "com.hisaabghar.ledger"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI passes the build number so each new APK installs over the old one.
+        versionCode((System.getenv("APP_VERSION_CODE") ?: "1").toInteger())
+        versionName "1." + (System.getenv("APP_VERSION_CODE") ?: "0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // The keystore is in the repo, locked by a password that only exists in CI.
+            storeFile file('mera-khata.p12')
+            storePassword System.getenv("APP_KEY_PASSWORD") ?: ""
+            keyAlias 'merakhata'
+            keyPassword System.getenv("APP_KEY_PASSWORD") ?: ""
+            storeType 'pkcs12'
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

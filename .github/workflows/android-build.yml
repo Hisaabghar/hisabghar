@@ -1,13 +1,30 @@
-name: Build Android APK
+name: Build Android app
 
+# Builds the Mera Khata Android app (APK) and publishes it at
+# https://github.com/Hisaabghar/hisabghar/releases/download/android-latest/mera-khata.apk
+# The app opens the live website, so normal website updates don't need a new APK.
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - claude/happy-cori-yigp1r
+    paths:
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - '.github/workflows/android-build.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -28,23 +45,48 @@ jobs:
 
       - name: Build web app
         run: npm run build
-        env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
+      # The signing key lives in the repo, locked with a password derived from an
+      # existing repository secret, so it never appears anywhere in plain text.
+      # On the very first run the key is created and committed.
+      - name: Signing key
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MERA_KHATA_30F9B }}
+        run: |
+          PW=$(printf '%s' "$SA" | sha256sum | cut -c1-40)
+          echo "::add-mask::$PW"
+          echo "APP_KEY_PASSWORD=$PW" >> "$GITHUB_ENV"
+          if [ ! -f android/app/mera-khata.p12 ]; then
+            keytool -genkeypair -storetype PKCS12 -keystore android/app/mera-khata.p12 -alias merakhata \
+              -keyalg RSA -keysize 2048 -validity 10000 -storepass "$PW" -keypass "$PW" \
+              -dname "CN=Mera Khata, O=Hisaabghar, C=PK"
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add android/app/mera-khata.p12
+            git commit -m "Add Android app signing key (password kept in CI) [skip ci]"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Build APK
+        working-directory: android
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../mera-khata.apk
+
+      - name: Publish APK
+        uses: softprops/action-gh-release@v2
         with:
-          name: ledger-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: android-latest
+          name: Mera Khata Android app
+          make_latest: true
+          files: mera-khata.apk
+          body: |
+            Download **mera-khata.apk** below and open it on your Android phone to install.
+            Build ${{ github.run_number }}.

@@ -4,7 +4,7 @@ import { homeCol, settingsDoc } from '../../lib/paths'
 import { addItem, mergeDoc } from '../../hooks/useData'
 import { rs, shortDate, today } from '../../lib/format'
 import { HOME_EXPENSE } from '../../lib/catalog'
-import { billStatus, dueText, notifyOn, setNotify } from '../../lib/bills'
+import { billStatus, checkBills, dueText, notifyOn, setNotify } from '../../lib/bills'
 import { Card, Chips, ConfirmDelete, Field, FormSheet, List, MoneyInput, Row, cleanNumber, num } from '../ui/kit'
 import { withExtra } from './HomeForm'
 
@@ -48,6 +48,7 @@ export function BillsTab({ uid, settings, accounts }: { uid: string; settings: S
               if (!ok) return setMsg('Notifications are blocked. Allow them for this site in your phone’s browser settings, then try again.')
               setMsg(null)
               setNotifyState(on)
+              void checkBills(bills)
             }}
           />
           Phone notifications for bills (this device)

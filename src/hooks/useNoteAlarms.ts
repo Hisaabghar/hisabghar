@@ -4,6 +4,7 @@ import { notesCol } from '../lib/paths'
 import { patchItem, useLiveQuery } from './useData'
 import { cacheAlarms, nextTime, showNote } from '../lib/noteAlarms'
 import { play } from '../lib/sound'
+import { scheduleNoteAlarms } from '../lib/native'
 
 /** Rings note alarms while the app is open, and catches up on missed ones when it opens. */
 export function useNoteAlarms(uid: string) {
@@ -14,6 +15,7 @@ export function useNoteAlarms(uid: string) {
   useEffect(() => {
     const list = notes.items
     void cacheAlarms(list)
+    void scheduleNoteAlarms(list)
     const fire = (n: Note) => {
       void showNote(n)
       play('alarm')

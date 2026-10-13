@@ -9,6 +9,7 @@ import { setSoundOn, soundOn } from '../lib/sound'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
 import { BackupSheet } from './BackupSheet'
+import { AndroidSettings } from './AndroidSettings'
 import { BILL_COLORS, resizeImage } from '../lib/pdf'
 
 export function SettingsSheet({
@@ -446,6 +447,8 @@ export function SettingsSheet({
           <div className="sheetText">No PIN yet. You will create one when you open Home Accounts.</div>
         )}
       </div>
+
+      <AndroidSettings />
 
       <div className="settingsGroup">
         <div className="settingsHead">💾 Backup & export</div>
