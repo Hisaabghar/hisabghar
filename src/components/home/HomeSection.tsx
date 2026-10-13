@@ -32,7 +32,7 @@ import {
 import { LoansTab } from './LoansTab'
 import { BarChart } from '../ui/BarChart'
 import { BillsTab } from './BillsTab'
-import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headResolver } from '../ui/Heads'
+import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOptions, headResolver } from '../ui/Heads'
 import { ReportTab } from './ReportTab'
 
 export type HomeTab = 'summary' | 'income' | 'expenses' | 'entries' | 'report' | 'bills' | 'udhaar'
@@ -637,7 +637,7 @@ export function HomeSection({
                     ).concat('Balance correction').map((c) => ({ value: c, label: c })),
                   },
                   ...(deleting.type === 'expense'
-                    ? [{ key: 'head', label: 'Main account', kind: 'select', options: [{ value: '', label: 'None' }, ...heads.map((h) => ({ value: h, label: h }))] }]
+                    ? [{ key: 'head', label: 'Main account', kind: 'select', options: headOptions(heads, headMap[deleting.category]) }]
                     : []),
                 ] as EditField[])),
             {

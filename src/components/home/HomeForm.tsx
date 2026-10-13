@@ -6,6 +6,7 @@ import { addItem, mergeDoc } from '../../hooks/useData'
 import { rsRaw, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME } from '../../lib/catalog'
 import { Chips, Field, FormSheet, MoneyInput, Segmented, cleanNumber, num } from '../ui/kit'
+import { OUT_OF_HEADS } from '../ui/Heads'
 import { MultiItems, filledLines, linesTotal, newLine, type ItemLine } from '../ui/MultiItems'
 
 const nowTime = () => {
@@ -96,9 +97,10 @@ function OwnerPicker({ uid, owners, value, onChange }: { uid: string; owners: st
   )
 }
 
-const NONE = 'None'
+const AUTO = 'Automatic'
+const OUT = 'Not in any'
 
-/** Main expense account picker; '' means none. */
+/** Main expense account picker: '' = automatic (by category), '-' = kept out of every account. */
 export function HeadPicker({
   uid,
   field,
@@ -118,9 +120,9 @@ export function HeadPicker({
       field={field}
       addLabel="+ New main account"
       placeholder="e.g. Bike, House, Kids school"
-      accounts={[NONE, ...heads]}
-      value={value || NONE}
-      onChange={(v) => onChange(v === NONE ? '' : v)}
+      accounts={[AUTO, ...heads, OUT]}
+      value={value === OUT_OF_HEADS ? OUT : value || AUTO}
+      onChange={(v) => onChange(v === AUTO ? '' : v === OUT ? OUT_OF_HEADS : v)}
     />
   )
 }
@@ -362,8 +364,8 @@ export function HomeForm({
         <Field
           label={
             !head && !multi && headMap[category]
-              ? `Main account — “${category}” goes into 📂 ${headMap[category]} automatically`
-              : 'Main account (optional)'
+              ? `Main account — Automatic puts “${category}” in 📂 ${headMap[category]}, or choose yourself`
+              : 'Main account — Automatic (by category) or choose yourself'
           }
         >
           <HeadPicker uid={uid} field="expenseHeads" heads={heads} value={head} onChange={setHead} />

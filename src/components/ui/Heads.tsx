@@ -5,6 +5,8 @@ import { Sheet } from './Sheet'
 
 /** Bucket for expenses that aren't in any main account. */
 export const NO_HEAD = 'No main account'
+/** Saved on an entry the user deliberately kept out of every main account. */
+export const OUT_OF_HEADS = '-'
 
 type HeadEntry = { id: string; head?: string; category: string; amount: number }
 /** Category → main account, so e.g. every "Fuel" expense goes into "Bike" by itself. */
@@ -13,7 +15,16 @@ export type Resolve = (e: { head?: string; category: string }) => string
 export const headResolver =
   (map: HeadMap = {}): Resolve =>
   (e) =>
-    e.head || map[e.category] || NO_HEAD
+    e.head === OUT_OF_HEADS ? NO_HEAD : e.head || map[e.category] || NO_HEAD
+
+/** Choices for an entry's main account: automatic (by category), a chosen account, or none. */
+export function headOptions(heads: string[], autoHead?: string) {
+  return [
+    { value: '', label: autoHead ? `Automatic (${autoHead})` : 'Automatic (by category)' },
+    ...heads.map((h) => ({ value: h, label: h })),
+    { value: OUT_OF_HEADS, label: 'Not in any account' },
+  ]
+}
 
 export const HEAD_ICONS = ['🏠', '🏍️', '🚗', '👨‍👩‍👧', '🍽️', '💡', '📚', '🏥', '🎉', '🕌', '🏪', '👷', '📦', '🧾']
 const iconFor = (name: string, i: number) => (name === NO_HEAD ? '📄' : HEAD_ICONS[i % HEAD_ICONS.length])
@@ -207,6 +218,7 @@ export function HeadSheet<T extends HeadEntry>({
       {mode === 'link' && (
         <MultiChips options={cats} value={linked} onToggle={(c) => void onLink(c, !linked.includes(c))} />
       )}
+      <div className="statHint">Tap any entry to edit it, move it to another main account, or delete it.</div>
       <div className="headList">
         <Grouped entries={entries} row={row} />
       </div>

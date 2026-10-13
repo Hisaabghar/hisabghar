@@ -5,7 +5,7 @@ import { settingsDoc, shopExpCol } from '../../lib/paths'
 import { addItem, mergeDoc, removeItem, patchItem } from '../../hooks/useData'
 import { HeadPicker } from '../home/HomeForm'
 import { MultiItems, filledLines, linesTotal, newLine, type ItemLine } from '../ui/MultiItems'
-import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headResolver, type HeadMap } from '../ui/Heads'
+import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOptions, headResolver, type HeadMap } from '../ui/Heads'
 import { groupSum, rs, shortDate, sum } from '../../lib/format'
 import { SHOP_EXPENSES, SHOP_EXPENSE_ICONS } from '../../lib/catalog'
 import { Breakdown, Card, Chips, EditEntry, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
@@ -120,7 +120,7 @@ export function ExpensesTab({
           subtitle={`Paid from ${TILL_LABEL[deleting.paidFrom ?? 'cash']}`}
           fields={[
             { key: 'amount', label: 'Amount (Rs)', kind: 'money' },
-            { key: 'head', label: 'Main account', kind: 'select', options: [{ value: '', label: 'None' }, ...heads.map((h) => ({ value: h, label: h }))] },
+            { key: 'head', label: 'Main account', kind: 'select', options: headOptions(heads, headMap[deleting.category]) },
             { key: 'date', label: 'Date', kind: 'date' },
             { key: 'note', label: 'Note', kind: 'text' },
           ]}
@@ -193,7 +193,7 @@ export function ExpenseForm({
       <Field label="Paid from">
         <TillPicker value={paidFrom} onChange={setPaidFrom} />
       </Field>
-      <Field label="Main account (optional)">
+      <Field label="Main account — Automatic (by category) or choose yourself">
         <HeadPicker uid={uid} field="shopExpenseHeads" heads={heads} value={head} onChange={setHead} />
       </Field>
       <div className="twoFields">
