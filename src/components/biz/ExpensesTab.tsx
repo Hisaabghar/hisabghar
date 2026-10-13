@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { arrayRemove, arrayUnion, deleteField, getDocs, query, where } from 'firebase/firestore'
 import type { ShopExpense, Till } from '../../types'
 import { settingsDoc, shopExpCol } from '../../lib/paths'
-import { addItem, mergeDoc, removeItem, patchItem } from '../../hooks/useData'
+import { addItem, allByDate, mergeDoc, removeItem, patchItem, useLiveQuery } from '../../hooks/useData'
 import { HeadPicker } from '../home/HomeForm'
 import { MultiItems, filledLines, linesTotal, newLine, type ItemLine } from '../ui/MultiItems'
 import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOptions, headResolver, type HeadMap } from '../ui/Heads'
@@ -35,6 +35,8 @@ export function ExpensesTab({
   const [headView, setHeadView] = useState<string | null>(null)
   const [newHead, setNewHead] = useState(false)
   const headOf = headResolver(headMap)
+  // Every shop expense ever saved, for "All time" and adding old expenses to a main account.
+  const allExp = useLiveQuery<ShopExpense>(headView ? allByDate(shopExpCol(uid)) : null, `expall-${uid}-${headView ? 1 : 0}`)
   const linkedTo = (head: string) => Object.keys(headMap).filter((c) => headMap[c] === head)
   const withHead = async (name: string) => (await getDocs(query(shopExpCol(uid), where('head', '==', name)))).docs
   const total = sum(expenses, (e) => e.amount)
@@ -83,6 +85,11 @@ export function ExpensesTab({
         <HeadSheet
           name={headView}
           entries={list.filter((e) => headOf(e) === headView)}
+          allEntries={allExp.items}
+          resolve={headOf}
+          onMove={async (ids) => {
+            await Promise.all(ids.map((id) => patchItem(shopExpCol(uid), id, { head: headView })))
+          }}
           row={row}
           cats={SHOP_EXPENSES}
           map={headMap}

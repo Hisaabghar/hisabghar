@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
+/** Bottom sheet. Rendered at the top of the page so a sheet opened from another sheet shows above it. */
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return (
+  return createPortal(
     <div
       className="overlay"
       onClick={(e) => {
@@ -12,6 +14,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
         <div className="sheetTitle">{title}</div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

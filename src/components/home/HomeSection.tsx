@@ -399,6 +399,11 @@ export function HomeSection({
         <HeadSheet
           name={headView}
           entries={periodExpenses.filter((e) => headOf(e) === headView)}
+          allEntries={all.filter((e) => e.type === 'expense')}
+          resolve={headOf}
+          onMove={async (ids) => {
+            await Promise.all(ids.map((id) => patchItem(homeCol(uid), id, { head: headView })))
+          }}
           row={entryRow}
           cats={expenseCats}
           map={headMap}

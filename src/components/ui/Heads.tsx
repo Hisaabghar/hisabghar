@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { rs } from '../../lib/format'
-import { Card, Field, FormSheet } from './kit'
+import { Card, Field, FormSheet, Segmented } from './kit'
 import { Sheet } from './Sheet'
 
 /** Bucket for expenses that aren't in any main account. */
@@ -171,9 +171,90 @@ function Grouped<T extends HeadEntry>({ entries, row }: { entries: T[]; row: (e:
 }
 
 /** One main account: its entries, add more, rename or delete. */
-export function HeadSheet<T extends HeadEntry>({
+type FullEntry = HeadEntry & { date: string; note?: string }
+
+/** Pick already-saved (old) expenses and put them in this main account. */
+function OldPicker<T extends FullEntry>({
+  name,
+  candidates,
+  resolve,
+  onClose,
+  onMove,
+}: {
+  name: string
+  candidates: T[]
+  resolve: Resolve
+  onClose: () => void
+  onMove: (ids: string[]) => Promise<void>
+}) {
+  const [q, setQ] = useState('')
+  const [picked, setPicked] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+  const list = candidates
+    .filter((e) => !q.trim() || `${e.category} ${e.note ?? ''} ${e.date}`.toLowerCase().includes(q.trim().toLowerCase()))
+    .sort((a, b) => b.date.localeCompare(a.date))
+  const chosen = candidates.filter((e) => picked.includes(e.id))
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  return (
+    <Sheet title={`📥 Add old expenses to ${name}`} onClose={onClose}>
+      <p className="sheetText">Tick the expenses you already saved that belong to {name}. They move into it with their own date and amount.</p>
+      <input className="noteSearch" value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Search: fuel, petrol, Oct…" />
+      {list.length > 0 && (
+        <button
+          type="button"
+          className="linkBtn"
+          onClick={() => setPicked((p) => (list.every((e) => p.includes(e.id)) ? p.filter((id) => !list.some((e) => e.id === id)) : [...new Set([...p, ...list.map((e) => e.id)])]))}
+        >
+          {list.every((e) => picked.includes(e.id)) ? 'Untick all shown' : `Tick all shown (${list.length})`}
+        </button>
+      )}
+      <div className="pickList">
+        {list.length === 0 ? (
+          <div className="empty">No other expenses found.</div>
+        ) : (
+          list.slice(0, 300).map((e) => (
+            <label key={e.id} className={`pickRow ${picked.includes(e.id) ? 'on' : ''}`}>
+              <input type="checkbox" checked={picked.includes(e.id)} onChange={() => toggle(e.id)} />
+              <span className="pickBody">
+                <b>{e.category}</b>
+                <small>
+                  {e.date.split('-').reverse().join('-')}
+                  {e.note ? ` · ${e.note}` : ''}
+                  {resolve(e) !== NO_HEAD ? ` · now in ${resolve(e)}` : ''}
+                </small>
+              </span>
+              <span className="pickAmt">{rs(e.amount)}</span>
+            </label>
+          ))
+        )}
+      </div>
+      <div className="sheetBtns">
+        <button className="btnGhost" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          className="btnPrimary"
+          disabled={!picked.length || busy}
+          onClick={async () => {
+            setBusy(true)
+            await onMove(picked)
+            setBusy(false)
+            onClose()
+          }}
+        >
+          {busy ? 'Saving…' : `Add ${picked.length || ''} (${rs(chosen.reduce((s, e) => s + e.amount, 0))})`}
+        </button>
+      </div>
+    </Sheet>
+  )
+}
+
+export function HeadSheet<T extends FullEntry>({
   name,
   entries,
+  allEntries,
+  resolve,
+  onMove,
   row,
   cats,
   map,
@@ -184,7 +265,12 @@ export function HeadSheet<T extends HeadEntry>({
   onDelete,
 }: {
   name: string
+  /** This account's entries in the chosen period. */
   entries: T[]
+  /** Every expense ever saved (all accounts). */
+  allEntries: T[]
+  resolve: Resolve
+  onMove: (ids: string[]) => Promise<void>
   row: (e: T) => ReactNode
   cats: string[]
   map: HeadMap
@@ -196,16 +282,34 @@ export function HeadSheet<T extends HeadEntry>({
 }) {
   const [mode, setMode] = useState<'view' | 'rename' | 'delete' | 'link'>('view')
   const [to, setTo] = useState(name)
-  const total = entries.reduce((s, e) => s + e.amount, 0)
+  const [scope, setScope] = useState<'period' | 'all'>('period')
+  const [picking, setPicking] = useState(false)
+  const shown = scope === 'all' ? allEntries.filter((e) => resolve(e) === name) : entries
+  const total = shown.reduce((s, e) => s + e.amount, 0)
   const linked = cats.filter((c) => map[c] === name)
   return (
     <Sheet title={`📂 ${name}`} onClose={onClose}>
+      <Segmented
+        options={[
+          { id: 'period', label: 'This period' },
+          { id: 'all', label: 'All time' },
+        ]}
+        value={scope}
+        onChange={setScope}
+      />
       <div className="headTotal">
-        Total <b>{rs(total)}</b>
+        Total {scope === 'all' ? '(all time)' : ''} <b>{rs(total)}</b>
       </div>
-      <button className="btnPrimary full" onClick={onAdd}>
-        ＋ Add expense to {name === NO_HEAD ? 'expenses' : name}
-      </button>
+      <div className="headBtns">
+        <button className="btnPrimary" onClick={onAdd}>
+          ＋ New expense
+        </button>
+        {name !== NO_HEAD && (
+          <button className="btnGhost" onClick={() => setPicking(true)}>
+            📥 Add old expenses
+          </button>
+        )}
+      </div>
       {name !== NO_HEAD && (
         <div className="linkedCats">
           <span>Goes in automatically: </span>
@@ -220,7 +324,7 @@ export function HeadSheet<T extends HeadEntry>({
       )}
       <div className="statHint">Tap any entry to edit it, move it to another main account, or delete it.</div>
       <div className="headList">
-        <Grouped entries={entries} row={row} />
+        <Grouped entries={shown} row={row} />
       </div>
       {mode === 'rename' && onRename && (
         <div className="inlineAdd">
@@ -269,6 +373,18 @@ export function HeadSheet<T extends HeadEntry>({
             </button>
           )}
         </div>
+      )}
+      {picking && (
+        <OldPicker
+          name={name}
+          candidates={allEntries.filter((e) => resolve(e) !== name)}
+          resolve={resolve}
+          onClose={() => setPicking(false)}
+          onMove={async (ids) => {
+            await onMove(ids)
+            setScope('all')
+          }}
+        />
       )}
     </Sheet>
   )
