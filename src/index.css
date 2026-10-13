@@ -2909,3 +2909,96 @@ a.btnPrimary {
   text-align: center;
   text-decoration: none;
 }
+
+/* Main expense accounts */
+.headGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.headTile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.headTile.none {
+  border-style: dashed;
+  background: transparent;
+}
+.headIc {
+  font-size: 20px;
+}
+.headName {
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.headAmt {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--out-text);
+  font-variant-numeric: tabular-nums;
+}
+.headSub {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.headTotal {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.headTotal b {
+  font-size: 18px;
+  color: var(--out-text);
+}
+.headList {
+  margin: 12px 0;
+}
+.btnGhost.danger {
+  color: #b91c1c;
+}
+
+/* Business income table */
+.incomeTable {
+  display: flex;
+  flex-direction: column;
+}
+.incomeRow {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.incomeRow > :nth-child(n + 2) {
+  text-align: right;
+}
+.incomeRow small {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+.incomeRow b {
+  color: var(--in-text);
+}
+.incomeRow.head {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.incomeRow.total {
+  border-bottom: none;
+  font-weight: 800;
+}

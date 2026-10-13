@@ -17,6 +17,8 @@ export interface HomeEntry {
   toAccount?: string
   /** Whose money this is; absent means the user's own. */
   owner?: string
+  /** Main expense account (e.g. Bike, House). */
+  head?: string
   createdAt: number
 }
 
@@ -97,6 +99,8 @@ export interface ShopExpense {
   note: string
   paidFrom: Till
   date: string
+  /** Main expense account (e.g. Shop rent, Staff). */
+  head?: string
   createdAt: number
 }
 
@@ -242,6 +246,9 @@ export interface Settings {
   hiddenAccounts?: string[]
   /** Extra home categories the user added. */
   expenseCats?: string[]
+  /** Main expense accounts for home and for the shop. */
+  expenseHeads?: string[]
+  shopExpenseHeads?: string[]
   incomeCats?: string[]
   /** People whose money the user keeps (uncle, father…). */
   owners?: string[]

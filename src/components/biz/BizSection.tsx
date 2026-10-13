@@ -18,14 +18,16 @@ import { ExpensesTab, ExpenseForm } from './ExpensesTab'
 import { CloseDaySheet } from './CloseDaySheet'
 import { SellSheet } from './SellSheet'
 import { DocsTab } from './DocsTab'
+import { IncomeTab } from './IncomeTab'
 import { addStock, isLow } from '../../lib/stock'
 import { creditCol, shopExpCol, stockCol } from '../../lib/paths'
 import type { CreditEntry, Product, ShopExpense } from '../../types'
 
 /** Built-in pages, a page per user-added category (`c:<name>`), then Investment. */
-export type BizTab = 'dash' | Exclude<BizKind, 'custom'> | 'stock' | 'khata' | 'docs' | 'expenses' | 'invest' | `c:${string}`
+export type BizTab = 'dash' | 'income' | Exclude<BizKind, 'custom'> | 'stock' | 'khata' | 'docs' | 'expenses' | 'invest' | `c:${string}`
 const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'dash', label: 'Dashboard', icon: '📊' },
+  { id: 'income', label: 'Income (all)', icon: '💰' },
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
   { id: 'load', label: 'Load', icon: '📶' },
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
@@ -40,7 +42,7 @@ export function bizTabs(settings: Settings): { id: BizTab; label: string; icon: 
     ...(settings.customBiz ?? []).map((c) => ({ id: `c:${c.name}` as BizTab, label: c.name, icon: c.icon })),
     { id: 'khata', label: 'Customer khata', icon: '📒' },
     { id: 'docs', label: 'Bills & letter pad', icon: '📄' },
-    { id: 'expenses', label: 'Shop expenses', icon: '🧾' },
+    { id: 'expenses', label: 'Expenses (all)', icon: '🧾' },
     { id: 'invest', label: 'Investment', icon: '🏦' },
   ]
 }
@@ -147,10 +149,11 @@ export function BizSection({
       </div>
       {tab === 'invest' && <InvestTab uid={uid} />}
       {tab === 'stock' && <StockTab uid={uid} />}
+      {tab === 'income' && <IncomeTab entries={entries} expTotal={expTotal} isDay={isDay} customIcon={customIcon} row={rowFor} />}
       {tab === 'docs' && <DocsTab uid={uid} settings={settings} products={stock.items} />}
       {tab === 'khata' && <KhataTab uid={uid} entries={credit.items} shopName={shopName} />}
       {tab === 'expenses' && (
-        <ExpensesTab uid={uid} expenses={exp.items} grossProfit={totalProfit} isDay={isDay} date={newDate} />
+        <ExpensesTab uid={uid} heads={settings.shopExpenseHeads ?? []} expenses={exp.items} grossProfit={totalProfit} isDay={isDay} date={newDate} />
       )}
       {error && <div className="errorBanner">{error}</div>}
 
@@ -419,7 +422,7 @@ export function BizSection({
           onClick={() =>
             customTab !== null
               ? setAdding('custom', customTab)
-              : setAdding(tab === 'dash' || tab.startsWith('c:') ? 'wallet' : (tab as BizKind))
+              : setAdding(tab === 'dash' || tab === 'income' || tab.startsWith('c:') ? 'wallet' : (tab as BizKind))
           }
         />
       )}
@@ -446,7 +449,7 @@ export function BizSection({
           onClose={() => setAdding(null)}
         />
       )}
-      {addingExp && <ExpenseForm uid={uid} date={newDate} onClose={() => setAddingExp(false)} />}
+      {addingExp && <ExpenseForm uid={uid} date={newDate} heads={settings.shopExpenseHeads ?? []} onClose={() => setAddingExp(false)} />}
       {addingCredit && (
         <CreditForm
           uid={uid}

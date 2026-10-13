@@ -15,7 +15,7 @@ const nowTime = () => {
 export const ME = 'Me'
 
 /** Chips plus an inline field that saves a new option to a settings list. */
-function PickerWithAdd({
+export function PickerWithAdd({
   uid,
   field,
   addLabel,
@@ -26,7 +26,7 @@ function PickerWithAdd({
   exclude,
 }: {
   uid: string
-  field: 'homeAccounts' | 'owners' | 'expenseCats' | 'incomeCats'
+  field: 'homeAccounts' | 'owners' | 'expenseCats' | 'incomeCats' | 'expenseHeads' | 'shopExpenseHeads'
   addLabel: string
   placeholder: string
   accounts: string[]
@@ -95,6 +95,35 @@ function OwnerPicker({ uid, owners, value, onChange }: { uid: string; owners: st
   )
 }
 
+const NONE = 'None'
+
+/** Main expense account picker; '' means none. */
+export function HeadPicker({
+  uid,
+  field,
+  heads,
+  value,
+  onChange,
+}: {
+  uid: string
+  field: 'expenseHeads' | 'shopExpenseHeads'
+  heads: string[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <PickerWithAdd
+      uid={uid}
+      field={field}
+      addLabel="+ New main account"
+      placeholder="e.g. Bike, House, Kids school"
+      accounts={[NONE, ...heads]}
+      value={value || NONE}
+      onChange={(v) => onChange(v === NONE ? '' : v)}
+    />
+  )
+}
+
 /** Built-in categories with the user's own added before "Other". */
 export function withExtra(base: string[], extra: string[] = []) {
   const rest = base.filter((c) => c !== 'Other')
@@ -109,9 +138,13 @@ export function HomeForm({
   owners,
   extraCats,
   initialOwner,
+  heads = [],
+  initialHead = '',
   onClose,
 }: {
   uid: string
+  heads?: string[]
+  initialHead?: string
   initialType: HomeType
   accounts: string[]
   owners: string[]
@@ -129,6 +162,7 @@ export function HomeForm({
   const [account, setAccount] = useState(accounts[0])
   const [toAccount, setToAccount] = useState(accounts[1] ?? accounts[0])
   const [note, setNote] = useState('')
+  const [head, setHead] = useState(initialHead)
   const [date, setDate] = useState(today())
   const [time, setTime] = useState(nowTime())
   const cats = type === 'income' ? withExtra(HOME_INCOME, extraCats?.income) : withExtra(HOME_EXPENSE, extraCats?.expense)
@@ -162,6 +196,7 @@ export function HomeForm({
         amount: num(amount),
         category: isTransfer ? 'Transfer' : category,
         ...(owner !== ME ? { owner } : {}),
+        ...(type === 'expense' && head ? { head } : {}),
       })
       return
     }
@@ -282,6 +317,11 @@ export function HomeForm({
             value={category}
             onChange={setCategory}
           />
+        </Field>
+      )}
+      {type === 'expense' && (
+        <Field label="Main account (optional)">
+          <HeadPicker uid={uid} field="expenseHeads" heads={heads} value={head} onChange={setHead} />
         </Field>
       )}
       <Field label="Note (optional)">

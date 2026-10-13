@@ -32,12 +32,15 @@ import {
 import { LoansTab } from './LoansTab'
 import { BarChart } from '../ui/BarChart'
 import { BillsTab } from './BillsTab'
+import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOf } from '../ui/Heads'
 import { ReportTab } from './ReportTab'
 
-export type HomeTab = 'summary' | 'entries' | 'report' | 'bills' | 'udhaar'
+export type HomeTab = 'summary' | 'income' | 'expenses' | 'entries' | 'report' | 'bills' | 'udhaar'
 export const HOME_TABS: { id: HomeTab; label: string; icon: string }[] = [
   { id: 'summary', label: 'Overview', icon: '📈' },
-  { id: 'entries', label: 'Income & Expenses', icon: '🧾' },
+  { id: 'income', label: 'Income', icon: '💼' },
+  { id: 'expenses', label: 'Expenses', icon: '🧾' },
+  { id: 'entries', label: 'All entries', icon: '📜' },
   { id: 'report', label: 'Spending report', icon: '📊' },
   { id: 'bills', label: 'Monthly bills', icon: '🔔' },
   { id: 'udhaar', label: 'Loans', icon: '🤝' },
@@ -101,8 +104,10 @@ export function HomeSection({
   setTab: (t: HomeTab) => void
 }) {
   const [period, setPeriod] = useState<Period>({ mode: 'month', date: today() })
-  const [adding, setAddingState] = useState<{ type: HomeType; owner?: string } | null>(null)
-  const setAdding = (type: HomeType | null, owner?: string) => setAddingState(type ? { type, owner } : null)
+  const [adding, setAddingState] = useState<{ type: HomeType; owner?: string; head?: string } | null>(null)
+  const setAdding = (type: HomeType | null, owner?: string, head?: string) => setAddingState(type ? { type, owner, head } : null)
+  const [headView, setHeadView] = useState<string | null>(null)
+  const [newHead, setNewHead] = useState(false)
   const [deleting, setDeleting] = useState<HomeEntry | null>(null)
 
   const home = useLiveQuery<HomeEntry>(allByDate(homeCol(uid)), `home-${uid}`)
@@ -130,6 +135,37 @@ export function HomeSection({
   const incomeSum = sum(income, (e) => e.amount)
   const expenseSum = sum(expense, (e) => e.amount)
   const closing = opening + incomeSum - expenseSum
+
+  const heads = settings.expenseHeads ?? []
+  const periodExpenses = inPeriod.filter((e) => e.type === 'expense')
+  const entryRow = (e: HomeEntry) => (
+    <Row
+      key={e.id}
+      icon={e.type === 'transfer' ? '🔁' : (ICONS[e.category] ?? (e.type === 'income' ? '💵' : '🧾'))}
+      title={e.type === 'transfer' ? `${accountOf(e)} → ${e.toAccount}` : e.category}
+      sub={[
+        e.type === 'income' ? `into ${accountOf(e)}` : e.type === 'expense' ? `from ${accountOf(e)}` : 'Transfer',
+        e.head ? `📂 ${e.head}` : '',
+        isMine(e) ? '' : `${ownerOf(e)}'s money`,
+        e.note,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      amount={(e.type === 'income' ? '+' : e.type === 'expense' ? '−' : '') + rs(e.amount)}
+      amountSub={`${shortDate(e.date)}${e.time ? ' · ' + e.time : ''}`}
+      tone={e.type === 'income' ? 'in' : e.type === 'expense' ? 'out' : undefined}
+      onClick={() => setDeleting(e)}
+    />
+  )
+  async function renameHead(from: string, to: string) {
+    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayUnion(to) })
+    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayRemove(from) })
+    await Promise.all(all.filter((e) => e.head === from).map((e) => patchItem(homeCol(uid), e.id, { head: to })))
+  }
+  async function deleteHead(name: string) {
+    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayRemove(name) })
+    await Promise.all(all.filter((e) => e.head === name).map((e) => patchItem(homeCol(uid), e.id, { head: deleteField() })))
+  }
 
   // Monthly budgets: this calendar month's spending against each limit.
   const thisMonth = monthRange(today())
@@ -250,6 +286,59 @@ export function HomeSection({
         </>
       )}
 
+      {tab === 'income' && (
+        <>
+          <StatGrid>
+            <Stat label="My income" value={incomeSum} tone="in" />
+            <Stat label="Others' money received" value={sum(inPeriod.filter((e) => e.type === 'income' && !isMine(e)), (e) => e.amount)} />
+            <Stat label="Entries" value={String(inPeriod.filter((e) => e.type === 'income').length)} />
+          </StatGrid>
+          <div className="quickAdd">
+            <button className="quickBtn span2" onClick={() => setAdding('income')}>
+              <span className="qIc">+</span> Add income
+            </button>
+          </div>
+          <div className="twoCol">
+            <Card title="Where it came from">
+              <Breakdown rows={groupSum(income, (e) => e.category, (e) => e.amount)} tone="in" icons={ICONS} />
+            </Card>
+            <Card title="Received in (account)">
+              <Breakdown rows={groupSum(income, accountOf, (e) => e.amount)} tone="in" />
+            </Card>
+          </div>
+          <Card title="Income entries">
+            <List empty="No income in this period. Tap “Add income”.">{inPeriod.filter((e) => e.type === 'income').map(entryRow)}</List>
+          </Card>
+        </>
+      )}
+
+      {tab === 'expenses' && (
+        <>
+          <StatGrid>
+            <Stat label="My expenses" value={expenseSum} tone="out" />
+            <Stat label="Paid from others' money" value={sum(inPeriod.filter((e) => e.type === 'expense' && !isMine(e)), (e) => e.amount)} />
+            <Stat label="Entries" value={String(periodExpenses.length)} />
+          </StatGrid>
+          <div className="quickAdd">
+            <button className="quickBtn secondary span2" onClick={() => setAdding('expense')}>
+              <span className="qIc">−</span> Add expense
+            </button>
+          </div>
+          <HeadsCard heads={heads} entries={periodExpenses} onOpen={setHeadView} onNew={() => setNewHead(true)} />
+          <div className="twoCol">
+            <Card title="By category">
+              <Breakdown rows={groupSum(periodExpenses, (e) => e.category, (e) => e.amount)} tone="out" icons={ICONS} />
+            </Card>
+            <Card title="Paid from (account)">
+              <Breakdown rows={groupSum(periodExpenses, accountOf, (e) => e.amount)} tone="out" />
+            </Card>
+          </div>
+          <Card title="Expense entries">
+            <List empty="No expenses in this period. Tap “Add expense”.">{periodExpenses.map(entryRow)}</List>
+          </Card>
+        </>
+      )}
+
       {tab === 'entries' && (
         <>
           <StatGrid>
@@ -270,26 +359,7 @@ export function HomeSection({
           </div>
           <Card>
             <List empty="No entries for this period. Use “Add income” or “Add expense” above.">
-              {inPeriod.map((e) => (
-                <Row
-                  key={e.id}
-                  icon={e.type === 'transfer' ? '🔁' : (ICONS[e.category] ?? (e.type === 'income' ? '💵' : '🧾'))}
-                  title={e.type === 'transfer' ? `${accountOf(e)} → ${e.toAccount}` : e.category}
-                  sub={
-                    [
-                      e.type === 'income' ? `into ${accountOf(e)}` : e.type === 'expense' ? `from ${accountOf(e)}` : 'Transfer',
-                      isMine(e) ? '' : `${ownerOf(e)}'s money`,
-                      e.note,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  }
-                  amount={(e.type === 'income' ? '+' : e.type === 'expense' ? '−' : '') + rs(e.amount)}
-                  amountSub={`${shortDate(e.date)}${e.time ? ' · ' + e.time : ''}`}
-                  tone={e.type === 'income' ? 'in' : e.type === 'expense' ? 'out' : undefined}
-                  onClick={() => setDeleting(e)}
-                />
-              ))}
+              {inPeriod.map(entryRow)}
             </List>
           </Card>
         </>
@@ -312,6 +382,29 @@ export function HomeSection({
 
       {tab === 'udhaar' && <LoansTab uid={uid} loans={loans.items} />}
 
+      {newHead && (
+        <NewHeadSheet
+          existing={heads}
+          onClose={() => setNewHead(false)}
+          onSave={(name) => mergeDoc(settingsDoc(uid), { expenseHeads: arrayUnion(name) })}
+        />
+      )}
+      {headView && (
+        <HeadSheet
+          name={headView}
+          total={sum(periodExpenses.filter((e) => headOf(e) === headView), (e) => e.amount)}
+          onClose={() => setHeadView(null)}
+          onAdd={() => {
+            setAdding('expense', undefined, headView === NO_HEAD ? '' : headView)
+            setHeadView(null)
+          }}
+          onRename={headView === NO_HEAD ? undefined : (to) => renameHead(headView, to)}
+          onDelete={headView === NO_HEAD ? undefined : () => deleteHead(headView)}
+        >
+          <List empty="No expenses in this account for this period.">{periodExpenses.filter((e) => headOf(e) === headView).map(entryRow)}</List>
+        </HeadSheet>
+      )}
+
       {budgetAlert.length > 0 && (
         <Sheet title={budgetAlert.some((r) => r.level === 100) ? '🚨 Budget crossed' : '⚠️ Budget almost used'} onClose={() => setBudgetAlert([])}>
           {budgetAlert.map((r) => (
@@ -325,7 +418,9 @@ export function HomeSection({
         </Sheet>
       )}
 
-      {tab !== 'udhaar' && tab !== 'bills' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
+      {tab !== 'udhaar' && tab !== 'bills' && (
+        <Fab label={tab === 'income' ? 'Add income' : 'Add expense'} onClick={() => setAdding(tab === 'income' ? 'income' : 'expense')} />
+      )}
 
       {view &&
         !deleting &&
@@ -505,6 +600,8 @@ export function HomeSection({
           accounts={accounts}
           owners={owners}
           extraCats={{ income: settings.incomeCats ?? [], expense: settings.expenseCats ?? [] }}
+          heads={heads}
+          initialHead={adding.head}
           onClose={() => setAdding(null)}
         />
       )}
@@ -530,6 +627,9 @@ export function HomeSection({
                       : withExtra(HOME_EXPENSE, settings.expenseCats)
                     ).concat('Balance correction').map((c) => ({ value: c, label: c })),
                   },
+                  ...(deleting.type === 'expense'
+                    ? [{ key: 'head', label: 'Main account', kind: 'select', options: [{ value: '', label: 'None' }, ...heads.map((h) => ({ value: h, label: h }))] }]
+                    : []),
                 ] as EditField[])),
             {
               key: 'owner',
@@ -541,10 +641,14 @@ export function HomeSection({
             { key: 'date', label: 'Date', kind: 'date' },
             { key: 'time', label: 'Time', kind: 'time' },
           ]}
-          initial={{ ...deleting, account: accountOf(deleting), owner: deleting.owner ?? '' }}
+          initial={{ ...deleting, account: accountOf(deleting), owner: deleting.owner ?? '', head: deleting.head ?? '' }}
           onSave={(v) => {
-            const { owner, ...rest } = v
-            return patchItem(homeCol(uid), deleting.id, { ...rest, owner: owner ? owner : deleteField() })
+            const { owner, head, ...rest } = v
+            return patchItem(homeCol(uid), deleting.id, {
+              ...rest,
+              owner: owner ? owner : deleteField(),
+              ...(deleting.type === 'expense' ? { head: head ? head : deleteField() } : {}),
+            })
           }}
           onDelete={() => removeItem(homeCol(uid), deleting.id)}
           onClose={() => setDeleting(null)}
