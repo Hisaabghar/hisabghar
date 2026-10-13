@@ -27,7 +27,7 @@ import type { CreditEntry, Product, ShopExpense } from '../../types'
 export type BizTab = 'dash' | 'income' | Exclude<BizKind, 'custom'> | 'stock' | 'khata' | 'docs' | 'expenses' | 'invest' | `c:${string}`
 const BASE_TABS: { id: BizTab; label: string; icon: string }[] = [
   { id: 'dash', label: 'Dashboard', icon: '📊' },
-  { id: 'income', label: 'Income (all)', icon: '💰' },
+  { id: 'income', label: 'Income', icon: '💰' },
   { id: 'wallet', label: 'Easypaisa / JazzCash', icon: '💸' },
   { id: 'load', label: 'Load', icon: '📶' },
   { id: 'copy', label: 'Photocopy', icon: '🖨️' },
@@ -42,7 +42,7 @@ export function bizTabs(settings: Settings): { id: BizTab; label: string; icon: 
     ...(settings.customBiz ?? []).map((c) => ({ id: `c:${c.name}` as BizTab, label: c.name, icon: c.icon })),
     { id: 'khata', label: 'Customer khata', icon: '📒' },
     { id: 'docs', label: 'Bills & letter pad', icon: '📄' },
-    { id: 'expenses', label: 'Expenses (all)', icon: '🧾' },
+    { id: 'expenses', label: 'Expenses', icon: '🧾' },
     { id: 'invest', label: 'Investment', icon: '🏦' },
   ]
 }
