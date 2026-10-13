@@ -140,11 +140,13 @@ export function HomeForm({
   extraCats,
   initialOwner,
   heads = [],
+  headMap = {},
   initialHead = '',
   onClose,
 }: {
   uid: string
   heads?: string[]
+  headMap?: Record<string, string>
   initialHead?: string
   initialType: HomeType
   accounts: string[]
@@ -357,7 +359,13 @@ export function HomeForm({
         </Field>
       )}
       {type === 'expense' && (
-        <Field label="Main account (optional)">
+        <Field
+          label={
+            !head && !multi && headMap[category]
+              ? `Main account — “${category}” goes into 📂 ${headMap[category]} automatically`
+              : 'Main account (optional)'
+          }
+        >
           <HeadPicker uid={uid} field="expenseHeads" heads={heads} value={head} onChange={setHead} />
         </Field>
       )}

@@ -249,6 +249,9 @@ export interface Settings {
   /** Main expense accounts for home and for the shop. */
   expenseHeads?: string[]
   shopExpenseHeads?: string[]
+  /** Category → main account it goes into automatically. */
+  headCats?: Record<string, string>
+  shopHeadCats?: Record<string, string>
   incomeCats?: string[]
   /** People whose money the user keeps (uncle, father…). */
   owners?: string[]

@@ -5,7 +5,7 @@ import { settingsDoc, shopExpCol } from '../../lib/paths'
 import { addItem, mergeDoc, removeItem, patchItem } from '../../hooks/useData'
 import { HeadPicker } from '../home/HomeForm'
 import { MultiItems, filledLines, linesTotal, newLine, type ItemLine } from '../ui/MultiItems'
-import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOf } from '../ui/Heads'
+import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headResolver, type HeadMap } from '../ui/Heads'
 import { groupSum, rs, shortDate, sum } from '../../lib/format'
 import { SHOP_EXPENSES, SHOP_EXPENSE_ICONS } from '../../lib/catalog'
 import { Breakdown, Card, Chips, EditEntry, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
@@ -20,9 +20,11 @@ export function ExpensesTab({
   isDay,
   date,
   heads,
+  headMap,
 }: {
   uid: string
   heads: string[]
+  headMap: HeadMap
   expenses: ShopExpense[]
   grossProfit: number
   isDay: boolean
@@ -32,6 +34,8 @@ export function ExpensesTab({
   const [deleting, setDeleting] = useState<ShopExpense | null>(null)
   const [headView, setHeadView] = useState<string | null>(null)
   const [newHead, setNewHead] = useState(false)
+  const headOf = headResolver(headMap)
+  const linkedTo = (head: string) => Object.keys(headMap).filter((c) => headMap[c] === head)
   const withHead = async (name: string) => (await getDocs(query(shopExpCol(uid), where('head', '==', name)))).docs
   const total = sum(expenses, (e) => e.amount)
   const list = [...expenses].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
@@ -40,7 +44,7 @@ export function ExpensesTab({
       key={e.id}
       icon={SHOP_EXPENSE_ICONS[e.category] ?? '📝'}
       title={e.category}
-      sub={[`paid from ${TILL_LABEL[e.paidFrom ?? 'cash']}`, e.head ? `📂 ${e.head}` : '', e.note].filter(Boolean).join(' · ')}
+      sub={[`paid from ${TILL_LABEL[e.paidFrom ?? 'cash']}`, headOf(e) !== NO_HEAD ? `📂 ${headOf(e)}` : '', e.note].filter(Boolean).join(' · ')}
       amount={`−${rs(e.amount)}`}
       amountSub={isDay ? undefined : shortDate(e.date)}
       tone="out"
@@ -53,7 +57,7 @@ export function ExpensesTab({
         <HeroStat label="Profit from sales" value={grossProfit} />
         <HeroStat label="Net profit (after expenses)" value={grossProfit - total} />
       </Hero>
-      <HeadsCard heads={heads} entries={expenses} onOpen={setHeadView} onNew={() => setNewHead(true)} />
+      <HeadsCard heads={heads} entries={expenses} resolve={headOf} onOpen={setHeadView} onNew={() => setNewHead(true)} />
       <div className="twoCol">
         <Card title="Where it went">
           <Breakdown rows={groupSum(expenses, (e) => e.category, (e) => e.amount)} tone="out" icons={SHOP_EXPENSE_ICONS} />
@@ -70,13 +74,19 @@ export function ExpensesTab({
         <NewHeadSheet
           existing={heads}
           onClose={() => setNewHead(false)}
-          onSave={(name) => mergeDoc(settingsDoc(uid), { shopExpenseHeads: arrayUnion(name) })}
+          cats={SHOP_EXPENSES}
+          map={headMap}
+          onSave={(name, cats) => mergeDoc(settingsDoc(uid), { shopExpenseHeads: arrayUnion(name), shopHeadCats: Object.fromEntries(cats.map((c) => [c, name])) })}
         />
       )}
       {headView && (
         <HeadSheet
           name={headView}
-          total={sum(expenses.filter((e) => headOf(e) === headView), (e) => e.amount)}
+          entries={list.filter((e) => headOf(e) === headView)}
+          row={row}
+          cats={SHOP_EXPENSES}
+          map={headMap}
+          onLink={(c, on) => mergeDoc(settingsDoc(uid), { shopHeadCats: { [c]: on ? headView : deleteField() } })}
           onClose={() => setHeadView(null)}
           onAdd={() => {
             setAdding({ head: headView === NO_HEAD ? '' : headView })
@@ -86,7 +96,7 @@ export function ExpensesTab({
             headView === NO_HEAD
               ? undefined
               : async (to) => {
-                  await mergeDoc(settingsDoc(uid), { shopExpenseHeads: arrayUnion(to) })
+                  await mergeDoc(settingsDoc(uid), { shopExpenseHeads: arrayUnion(to), shopHeadCats: Object.fromEntries(linkedTo(headView).map((c) => [c, to])) })
                   await mergeDoc(settingsDoc(uid), { shopExpenseHeads: arrayRemove(headView) })
                   await Promise.all((await withHead(headView)).map((d) => patchItem(shopExpCol(uid), d.id, { head: to })))
                 }
@@ -95,13 +105,14 @@ export function ExpensesTab({
             headView === NO_HEAD
               ? undefined
               : async () => {
-                  await mergeDoc(settingsDoc(uid), { shopExpenseHeads: arrayRemove(headView) })
+                  await mergeDoc(settingsDoc(uid), {
+                    shopExpenseHeads: arrayRemove(headView),
+                    shopHeadCats: Object.fromEntries(linkedTo(headView).map((c) => [c, deleteField()])),
+                  })
                   await Promise.all((await withHead(headView)).map((d) => patchItem(shopExpCol(uid), d.id, { head: deleteField() })))
                 }
           }
-        >
-          <List empty="No expenses in this account for this period.">{list.filter((e) => headOf(e) === headView).map(row)}</List>
-        </HeadSheet>
+        />
       )}
       {deleting && (
         <EditEntry

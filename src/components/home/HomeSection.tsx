@@ -32,7 +32,7 @@ import {
 import { LoansTab } from './LoansTab'
 import { BarChart } from '../ui/BarChart'
 import { BillsTab } from './BillsTab'
-import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOf } from '../ui/Heads'
+import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headResolver } from '../ui/Heads'
 import { ReportTab } from './ReportTab'
 
 export type HomeTab = 'summary' | 'income' | 'expenses' | 'entries' | 'report' | 'bills' | 'udhaar'
@@ -137,6 +137,9 @@ export function HomeSection({
   const closing = opening + incomeSum - expenseSum
 
   const heads = settings.expenseHeads ?? []
+  const headMap = settings.headCats ?? {}
+  const headOf = headResolver(headMap)
+  const expenseCats = withExtra(HOME_EXPENSE, settings.expenseCats)
   const periodExpenses = inPeriod.filter((e) => e.type === 'expense')
   const entryRow = (e: HomeEntry) => (
     <Row
@@ -145,7 +148,7 @@ export function HomeSection({
       title={e.type === 'transfer' ? `${accountOf(e)} → ${e.toAccount}` : e.category}
       sub={[
         e.type === 'income' ? `into ${accountOf(e)}` : e.type === 'expense' ? `from ${accountOf(e)}` : 'Transfer',
-        e.head ? `📂 ${e.head}` : '',
+        e.type === 'expense' && headOf(e) !== NO_HEAD ? `📂 ${headOf(e)}` : '',
         isMine(e) ? '' : `${ownerOf(e)}'s money`,
         e.note,
       ]
@@ -157,13 +160,14 @@ export function HomeSection({
       onClick={() => setDeleting(e)}
     />
   )
+  const linkedTo = (head: string) => Object.keys(headMap).filter((c) => headMap[c] === head)
   async function renameHead(from: string, to: string) {
-    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayUnion(to) })
+    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayUnion(to), headCats: Object.fromEntries(linkedTo(from).map((c) => [c, to])) })
     await mergeDoc(settingsDoc(uid), { expenseHeads: arrayRemove(from) })
     await Promise.all(all.filter((e) => e.head === from).map((e) => patchItem(homeCol(uid), e.id, { head: to })))
   }
   async function deleteHead(name: string) {
-    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayRemove(name) })
+    await mergeDoc(settingsDoc(uid), { expenseHeads: arrayRemove(name), headCats: Object.fromEntries(linkedTo(name).map((c) => [c, deleteField()])) })
     await Promise.all(all.filter((e) => e.head === name).map((e) => patchItem(homeCol(uid), e.id, { head: deleteField() })))
   }
 
@@ -324,7 +328,7 @@ export function HomeSection({
               <span className="qIc">−</span> Add expense
             </button>
           </div>
-          <HeadsCard heads={heads} entries={periodExpenses} onOpen={setHeadView} onNew={() => setNewHead(true)} />
+          <HeadsCard heads={heads} entries={periodExpenses} resolve={headOf} onOpen={setHeadView} onNew={() => setNewHead(true)} />
           <div className="twoCol">
             <Card title="By category">
               <Breakdown rows={groupSum(periodExpenses, (e) => e.category, (e) => e.amount)} tone="out" icons={ICONS} />
@@ -386,13 +390,19 @@ export function HomeSection({
         <NewHeadSheet
           existing={heads}
           onClose={() => setNewHead(false)}
-          onSave={(name) => mergeDoc(settingsDoc(uid), { expenseHeads: arrayUnion(name) })}
+          cats={expenseCats}
+          map={headMap}
+          onSave={(name, cats) => mergeDoc(settingsDoc(uid), { expenseHeads: arrayUnion(name), headCats: Object.fromEntries(cats.map((c) => [c, name])) })}
         />
       )}
       {headView && (
         <HeadSheet
           name={headView}
-          total={sum(periodExpenses.filter((e) => headOf(e) === headView), (e) => e.amount)}
+          entries={periodExpenses.filter((e) => headOf(e) === headView)}
+          row={entryRow}
+          cats={expenseCats}
+          map={headMap}
+          onLink={(c, on) => mergeDoc(settingsDoc(uid), { headCats: { [c]: on ? headView : deleteField() } })}
           onClose={() => setHeadView(null)}
           onAdd={() => {
             setAdding('expense', undefined, headView === NO_HEAD ? '' : headView)
@@ -400,9 +410,7 @@ export function HomeSection({
           }}
           onRename={headView === NO_HEAD ? undefined : (to) => renameHead(headView, to)}
           onDelete={headView === NO_HEAD ? undefined : () => deleteHead(headView)}
-        >
-          <List empty="No expenses in this account for this period.">{periodExpenses.filter((e) => headOf(e) === headView).map(entryRow)}</List>
-        </HeadSheet>
+        />
       )}
 
       {budgetAlert.length > 0 && (
@@ -601,6 +609,7 @@ export function HomeSection({
           owners={owners}
           extraCats={{ income: settings.incomeCats ?? [], expense: settings.expenseCats ?? [] }}
           heads={heads}
+          headMap={headMap}
           initialHead={adding.head}
           onClose={() => setAdding(null)}
         />

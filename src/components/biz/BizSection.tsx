@@ -153,7 +153,7 @@ export function BizSection({
       {tab === 'docs' && <DocsTab uid={uid} settings={settings} products={stock.items} />}
       {tab === 'khata' && <KhataTab uid={uid} entries={credit.items} shopName={shopName} />}
       {tab === 'expenses' && (
-        <ExpensesTab uid={uid} heads={settings.shopExpenseHeads ?? []} expenses={exp.items} grossProfit={totalProfit} isDay={isDay} date={newDate} />
+        <ExpensesTab uid={uid} heads={settings.shopExpenseHeads ?? []} headMap={settings.shopHeadCats ?? {}} expenses={exp.items} grossProfit={totalProfit} isDay={isDay} date={newDate} />
       )}
       {error && <div className="errorBanner">{error}</div>}
 
