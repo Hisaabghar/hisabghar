@@ -1,5 +1,6 @@
 import type { jsPDF } from 'jspdf'
 import type { Invoice, Settings } from '../types'
+import { saveBlob } from './saveFile'
 
 type RGB = [number, number, number]
 const INK: RGB = [30, 30, 30]
@@ -388,32 +389,10 @@ export async function letterPdf(p: Profile, l: Letter) {
   return doc
 }
 
-const fileOf = (doc: jsPDF, name: string) => new File([doc.output('blob')], name, { type: 'application/pdf' })
-
-export function downloadPdf(doc: jsPDF, name: string) {
-  const url = URL.createObjectURL(doc.output('blob'))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 30000)
-}
+export const downloadPdf = (doc: jsPDF, name: string) => saveBlob(doc.output('blob'), name)
 
 /** Opens the phone's share menu (WhatsApp etc.); falls back to download. */
-export async function sharePdf(doc: jsPDF, name: string, text?: string) {
-  const file = fileOf(doc, name)
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: name, text })
-      return
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return
-    }
-  }
-  downloadPdf(doc, name)
-}
+export const sharePdf = (doc: jsPDF, name: string, text?: string) => saveBlob(doc.output('blob'), name, { share: true, text })
 
 /** Shrinks a picked image to a small PNG data URL (logo, signature, stamp). */
 export function resizeImage(file: File, max = 240): Promise<string> {

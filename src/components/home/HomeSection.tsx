@@ -1,10 +1,13 @@
 import { arrayRemove, arrayUnion, deleteField } from 'firebase/firestore'
 import { Sheet } from '../ui/Sheet'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { HomeEntry, HomeType, LoanEntry, Period, Settings } from '../../types'
 import { homeCol, loansCol, settingsDoc } from '../../lib/paths'
 import { addItem, allByDate, mergeDoc, removeItem, useLiveQuery, patchItem } from '../../hooks/useData'
-import { dailySeries, groupSum, inRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
+import { dailySeries, groupSum, inRange, monthRange, periodRange, rs, shortDate, sum, today } from '../../lib/format'
+import { budgetMessage, budgetRows, newAlerts, type BudgetRow } from '../../lib/budget'
+import { notifyNow } from '../../lib/notify'
+import { BudgetCard } from './ReportTab'
 import { HOME_EXPENSE, HOME_INCOME, ICONS, accountIcon, allHomeAccounts } from '../../lib/catalog'
 import { HomeForm, ME, withExtra } from './HomeForm'
 import {
@@ -128,6 +131,23 @@ export function HomeSection({
   const expenseSum = sum(expense, (e) => e.amount)
   const closing = opening + incomeSum - expenseSum
 
+  // Monthly budgets: this calendar month's spending against each limit.
+  const thisMonth = monthRange(today())
+  const budget = budgetRows(
+    settings.budgets,
+    all.filter((e) => e.type === 'expense' && inRange(e.date, thisMonth)),
+  )
+  const budgetKey = JSON.stringify(budget.map((r) => [r.category, r.level]))
+  const [budgetAlert, setBudgetAlert] = useState<BudgetRow[]>([])
+  useEffect(() => {
+    if (home.loading) return
+    const fresh = newAlerts(budget, thisMonth[0].slice(0, 7))
+    if (!fresh.length) return
+    setBudgetAlert(fresh)
+    fresh.forEach((r) => void notifyNow(r.level === 100 ? '🚨 Budget crossed' : '⚠️ Budget almost used', budgetMessage(r), `budget-${r.category}-${r.level}`))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [budgetKey, home.loading])
+
   const err = home.error || loans.error
 
   return (
@@ -217,6 +237,7 @@ export function HomeSection({
               <BarChart data={dailySeries(expense, range[0], range[1], (e) => e.amount)} tone="out" />
             </Card>
           )}
+          {budget.length > 0 && <BudgetCard rows={budget} onEdit={() => setTab('report')} />}
           <div className="twoCol">
             <Card title="Where the money went">
               <Breakdown rows={groupSum(expense, (e) => e.category, (e) => e.amount)} tone="out" icons={ICONS} />
@@ -275,12 +296,34 @@ export function HomeSection({
       )}
 
       {tab === 'report' && (
-        <ReportTab expenses={inPeriod.filter((e) => e.type === 'expense')} accounts={accounts} accountOf={accountOf} onOpen={setDeleting} />
+        <ReportTab
+          uid={uid}
+          budgets={settings.budgets ?? {}}
+          budget={budget}
+          cats={withExtra(HOME_EXPENSE, settings.expenseCats)}
+          expenses={inPeriod.filter((e) => e.type === 'expense')}
+          accounts={accounts}
+          accountOf={accountOf}
+          onOpen={setDeleting}
+        />
       )}
 
       {tab === 'bills' && <BillsTab uid={uid} settings={settings} accounts={accounts} />}
 
       {tab === 'udhaar' && <LoansTab uid={uid} loans={loans.items} />}
+
+      {budgetAlert.length > 0 && (
+        <Sheet title={budgetAlert.some((r) => r.level === 100) ? '🚨 Budget crossed' : '⚠️ Budget almost used'} onClose={() => setBudgetAlert([])}>
+          {budgetAlert.map((r) => (
+            <p key={r.category} className="sheetText">
+              {budgetMessage(r)}
+            </p>
+          ))}
+          <button className="btnPrimary full" onClick={() => setBudgetAlert([])}>
+            OK
+          </button>
+        </Sheet>
+      )}
 
       {tab !== 'udhaar' && tab !== 'bills' && <Fab label="Add expense" onClick={() => setAdding('expense')} />}
 

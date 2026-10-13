@@ -8,6 +8,7 @@ import { sha256 } from '../lib/format'
 import { setSoundOn, soundOn } from '../lib/sound'
 import { Field, MoneyInput, num } from './ui/kit'
 import { Sheet } from './ui/Sheet'
+import { BackupSheet } from './BackupSheet'
 import { BILL_COLORS, resizeImage } from '../lib/pdf'
 
 export function SettingsSheet({
@@ -77,6 +78,7 @@ export function SettingsSheet({
   const [net, setNet] = useState('')
   const [acc, setAcc] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
+  const [backup, setBackup] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function saveRates() {
@@ -446,12 +448,21 @@ export function SettingsSheet({
       </div>
 
       <div className="settingsGroup">
+        <div className="settingsHead">💾 Backup & export</div>
+        <div className="statHint">Download all your records as Excel, or a backup file you can restore later.</div>
+        <button className="btnGhost full" onClick={() => setBackup(true)}>
+          Open backup & export
+        </button>
+      </div>
+
+      <div className="settingsGroup">
         <div className="settingsHead">Account</div>
         <div className="sheetText">{email}</div>
         <button className="btnDanger full" onClick={onSignOut}>
           Log out
         </button>
       </div>
+      {backup && <BackupSheet uid={uid} settings={settings} onClose={() => setBackup(false)} />}
     </Sheet>
   )
 }

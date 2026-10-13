@@ -2826,3 +2826,51 @@ a.btnGhost {
 .noteAct.del {
   color: #b91c1c;
 }
+.restoreBtn {
+  text-align: center;
+  cursor: pointer;
+}
+
+/* Budgets */
+.budgetList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bdVal.warn,
+.budgetHint.warn {
+  color: #b45309;
+}
+.bdVal.over,
+.budgetHint.over {
+  color: #b91c1c;
+}
+.bdBar.budget {
+  background: var(--brand-2);
+}
+.bdBar.budget.warn {
+  background: #f59e0b;
+}
+.bdBar.budget.over {
+  background: #ef4444;
+}
+.budgetHint {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.budgetSet {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.budgetSetRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.linkBtn.danger {
+  color: #b91c1c;
+}

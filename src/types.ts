@@ -231,6 +231,8 @@ export interface Settings {
   /** Ask for the PIN to open Home Accounts (default on). */
   homeLock?: boolean
   bills?: Bill[]
+  /** Monthly spending limit per home expense category. */
+  budgets?: Record<string, number>
   businessName?: string
   /** Extra load networks the user added on top of the built-in ones. */
   networks?: string[]
