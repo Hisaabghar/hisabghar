@@ -26,6 +26,7 @@ export const whenText = (ms: number) =>
 export function NotesPage({ uid, notes }: { uid: string; notes: LiveQuery<Note> }) {
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<Note | 'new' | null>(null)
+  const [deleting, setDeleting] = useState<Note | null>(null)
   const now = nowMs()
   const match = (n: Note) => !q.trim() || `${n.title} ${n.text}`.toLowerCase().includes(q.trim().toLowerCase())
   const all = notes.items.filter(match).sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt))
@@ -36,7 +37,13 @@ export function NotesPage({ uid, notes }: { uid: string; notes: LiveQuery<Note> 
   const grid = (list: Note[]) => (
     <div className="noteGrid">
       {list.map((n) => (
-        <button key={n.id} className="noteCard" style={n.color ? { background: n.color, color: '#1f2937' } : undefined} onClick={() => setEditing(n)}>
+        <div
+          key={n.id}
+          role="button"
+          className="noteCard"
+          style={n.color ? { background: n.color, color: '#1f2937' } : undefined}
+          onClick={() => setEditing(n)}
+        >
           {n.pinned && <span className="notePin">📌</span>}
           {n.title && <div className="noteTitle">{n.title}</div>}
           {n.text && <div className="noteText">{n.text}</div>}
@@ -47,7 +54,27 @@ export function NotesPage({ uid, notes }: { uid: string; notes: LiveQuery<Note> 
               {n.notified ? ' · done' : ''}
             </div>
           )}
-        </button>
+          <div className="noteActions">
+            <button
+              className="noteAct"
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditing(n)
+              }}
+            >
+              ✏️ Edit
+            </button>
+            <button
+              className="noteAct del"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeleting(n)
+              }}
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
       ))}
     </div>
   )
@@ -86,6 +113,13 @@ export function NotesPage({ uid, notes }: { uid: string; notes: LiveQuery<Note> 
         </>
       )}
       {editing && <NoteSheet uid={uid} note={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {deleting && (
+        <ConfirmDelete
+          what={`Delete the note “${deleting.title || deleting.text.slice(0, 30)}”? Its alarm is removed too.`}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => removeItem(notesCol(uid), deleting.id)}
+        />
+      )}
     </div>
   )
 }

@@ -2798,3 +2798,31 @@ a.btnGhost {
 .colorPick {
   margin-bottom: 6px;
 }
+.noteActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.noteActions:only-child,
+.noteWhen + .noteActions {
+  margin-top: 4px;
+}
+.noteText + .noteActions,
+.noteTitle + .noteActions {
+  margin-top: auto;
+}
+.noteAct {
+  flex: 1;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  border-radius: 10px;
+  padding: 6px 4px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.noteAct.del {
+  color: #b91c1c;
+}
