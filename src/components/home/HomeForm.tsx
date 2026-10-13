@@ -6,6 +6,7 @@ import { addItem, mergeDoc } from '../../hooks/useData'
 import { rsRaw, today } from '../../lib/format'
 import { HOME_EXPENSE, HOME_INCOME } from '../../lib/catalog'
 import { Chips, Field, FormSheet, MoneyInput, Segmented, cleanNumber, num } from '../ui/kit'
+import { MultiItems, filledLines, linesTotal, newLine, type ItemLine } from '../ui/MultiItems'
 
 const nowTime = () => {
   const d = new Date()
@@ -186,10 +187,26 @@ export function HomeForm({
   const mineLeft = num(amount) - othersTotal
   const sharesValid = !splitting || (mineLeft >= 0 && shares.some((x) => x.person.trim() && num(x.amount) > 0))
 
-  const canSave = num(amount) > 0 && sharesValid && (!isTransfer || (toAccount && toAccount !== account))
+  // Many items at once: each line is its own entry (title, category, amount), sharing account, date and main account.
+  const [many, setMany] = useState(false)
+  const [lines, setLines] = useState<ItemLine[]>(() => [newLine(category)])
+  const multi = many && !isTransfer && !splitting
+  const canSave = (multi ? linesTotal(lines) > 0 : num(amount) > 0) && sharesValid && (!isTransfer || (toAccount && toAccount !== account))
 
   async function save() {
     const base = { type, account, note: note.trim(), date, time, ...(isTransfer ? { toAccount } : {}) }
+    if (multi) {
+      for (const l of filledLines(lines))
+        await addItem(homeCol(uid), {
+          ...base,
+          note: [l.name.trim(), note.trim()].filter(Boolean).join(' · '),
+          amount: num(l.amount),
+          category: l.cat,
+          ...(owner !== ME ? { owner } : {}),
+          ...(type === 'expense' && head ? { head } : {}),
+        })
+      return
+    }
     if (!splitting) {
       await addItem(homeCol(uid), {
         ...base,
@@ -228,9 +245,29 @@ export function HomeForm({
           if (t !== 'transfer') setCategory(defaultCat(t, owner))
         }}
       />
-      <Field label="Amount (Rs)">
-        <MoneyInput value={amount} onChange={setAmount} autoFocus />
-      </Field>
+      {!isTransfer && (
+        <Segmented
+          options={[
+            { id: 'one', label: 'One item' },
+            { id: 'many', label: 'Many items + subtotal' },
+          ]}
+          value={many ? 'many' : 'one'}
+          onChange={(v) => {
+            setMany(v === 'many')
+            if (v === 'many') {
+              setSplit(false)
+              setLines((ls) => (ls.some((l) => l.name || l.amount) ? ls : [newLine(category)]))
+            }
+          }}
+        />
+      )}
+      {multi ? (
+        <MultiItems lines={lines} setLines={setLines} cats={cats} />
+      ) : (
+        <Field label="Amount (Rs)">
+          <MoneyInput value={amount} onChange={setAmount} autoFocus />
+        </Field>
+      )}
       {type === 'income' ? (
         <Field label="Is all of this yours?">
           <Segmented
@@ -306,7 +343,7 @@ export function HomeForm({
         <Field label="To account">
           <AccountPicker uid={uid} accounts={accounts} value={toAccount} onChange={setToAccount} exclude={account} />
         </Field>
-      ) : (
+      ) : multi ? null : (
         <Field label={type === 'income' ? (splitting ? 'Source of your part' : 'Source') : 'Spent on'}>
           <PickerWithAdd
             uid={uid}
@@ -328,7 +365,7 @@ export function HomeForm({
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder={isTransfer ? 'e.g. ATM withdrawal' : 'e.g. Tea with Ali, 2 litres petrol'}
+          placeholder={isTransfer ? 'e.g. ATM withdrawal' : multi ? 'Added to every item, e.g. Imtiaz store' : 'e.g. Tea with Ali, 2 litres petrol'}
         />
       </Field>
       <div className="twoFields">

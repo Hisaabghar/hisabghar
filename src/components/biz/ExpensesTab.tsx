@@ -4,10 +4,11 @@ import type { ShopExpense, Till } from '../../types'
 import { settingsDoc, shopExpCol } from '../../lib/paths'
 import { addItem, mergeDoc, removeItem, patchItem } from '../../hooks/useData'
 import { HeadPicker } from '../home/HomeForm'
+import { MultiItems, filledLines, linesTotal, newLine, type ItemLine } from '../ui/MultiItems'
 import { HeadSheet, HeadsCard, NewHeadSheet, NO_HEAD, headOf } from '../ui/Heads'
 import { groupSum, rs, shortDate, sum } from '../../lib/format'
 import { SHOP_EXPENSES, SHOP_EXPENSE_ICONS } from '../../lib/catalog'
-import { Breakdown, Card, Chips, EditEntry, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, num } from '../ui/kit'
+import { Breakdown, Card, Chips, EditEntry, Fab, Field, FormSheet, Hero, HeroStat, List, MoneyInput, Row, Segmented, num } from '../ui/kit'
 import { TillPicker } from './TillPicker'
 
 const TILL_LABEL: Record<Till, string> = { cash: 'cash', easypaisa: 'Easypaisa', jazzcash: 'JazzCash' }
@@ -139,6 +140,8 @@ export function ExpenseForm({
   onClose: () => void
 }) {
   const [head, setHead] = useState(initialHead)
+  const [many, setMany] = useState(false)
+  const [lines, setLines] = useState<ItemLine[]>(() => [newLine(SHOP_EXPENSES[0])])
   const [category, setCategory] = useState(SHOP_EXPENSES[0])
   const [amount, setAmount] = useState('')
   const [paidFrom, setPaidFrom] = useState<Till>('cash')
@@ -148,15 +151,34 @@ export function ExpenseForm({
     <FormSheet
       title="Shop expense"
       onClose={onClose}
-      canSave={num(amount) > 0}
-      onSave={() => addItem(shopExpCol(uid), { category, amount: num(amount), paidFrom, note: note.trim(), date, ...(head ? { head } : {}) })}
+      canSave={many ? linesTotal(lines) > 0 : num(amount) > 0}
+      onSave={async () => {
+        const base = { paidFrom, date, ...(head ? { head } : {}) }
+        if (!many) return addItem(shopExpCol(uid), { ...base, category, amount: num(amount), note: note.trim() })
+        for (const l of filledLines(lines))
+          await addItem(shopExpCol(uid), { ...base, category: l.cat, amount: num(l.amount), note: [l.name.trim(), note.trim()].filter(Boolean).join(' · ') })
+      }}
     >
-      <Field label="Amount (Rs)">
-        <MoneyInput value={amount} onChange={setAmount} autoFocus />
-      </Field>
-      <Field label="For">
-        <Chips options={SHOP_EXPENSES} value={category} onChange={setCategory} />
-      </Field>
+      <Segmented
+        options={[
+          { id: 'one', label: 'One item' },
+          { id: 'many', label: 'Many items + subtotal' },
+        ]}
+        value={many ? 'many' : 'one'}
+        onChange={(v) => setMany(v === 'many')}
+      />
+      {many ? (
+        <MultiItems lines={lines} setLines={setLines} cats={SHOP_EXPENSES} />
+      ) : (
+        <>
+          <Field label="Amount (Rs)">
+            <MoneyInput value={amount} onChange={setAmount} autoFocus />
+          </Field>
+          <Field label="For">
+            <Chips options={SHOP_EXPENSES} value={category} onChange={setCategory} />
+          </Field>
+        </>
+      )}
       <Field label="Paid from">
         <TillPicker value={paidFrom} onChange={setPaidFrom} />
       </Field>
