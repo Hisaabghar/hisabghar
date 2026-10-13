@@ -245,3 +245,20 @@ export interface Settings {
   owners?: string[]
   rates: Record<string, number>
 }
+
+// ---------- Notes ----------
+export type Repeat = 'none' | 'daily' | 'weekly' | 'monthly'
+export interface Note {
+  id: string
+  title: string
+  text: string
+  /** Alarm time in ms; absent = no reminder. */
+  remindAt?: number
+  repeat?: Repeat
+  /** The alarm for remindAt has already gone off. */
+  notified?: boolean
+  pinned?: boolean
+  color?: string
+  createdAt: number
+  updatedAt?: number
+}

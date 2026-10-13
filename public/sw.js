@@ -80,3 +80,28 @@ self.addEventListener('notificationclick', (e) => {
     self.clients.matchAll({ type: 'window' }).then((list) => (list[0] ? list[0].focus() : self.clients.openWindow('/'))),
   )
 })
+
+// Note alarms in the background (best effort; installed app on Chrome/Android).
+self.addEventListener('periodicsync', (e) => {
+  if (e.tag === 'mk-notes') e.waitUntil(remindNotes())
+})
+
+async function remindNotes() {
+  const c = await caches.open(CACHE)
+  const res = await c.match('/__mk/notes.json')
+  if (!res) return
+  const now = Date.now()
+  const seenRes = await c.match('/__mk/notes-shown.json')
+  const seen = seenRes ? await seenRes.json() : []
+  for (const n of await res.json()) {
+    const key = `${n.id}-${n.at}`
+    if (n.at > now || now - n.at > 24 * 3600 * 1000 || seen.includes(key)) continue
+    seen.push(key)
+    await self.registration.showNotification(`⏰ ${n.title || 'Reminder'}`, {
+      body: n.text || 'Mera Khata note',
+      icon: '/icons/icon-192.png',
+      tag: `note-${n.id}-${n.at}`,
+    })
+  }
+  await c.put('/__mk/notes-shown.json', new Response(JSON.stringify(seen.slice(-200))))
+}

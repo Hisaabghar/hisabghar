@@ -57,11 +57,12 @@ export async function setNotify(on: boolean): Promise<boolean> {
   return true
 }
 
-async function registerPeriodic() {
+export async function registerPeriodic() {
   try {
     const reg = await navigator.serviceWorker?.ready
     const ps = (reg as ServiceWorkerRegistration & { periodicSync?: { register: (t: string, o: object) => Promise<void> } })?.periodicSync
     await ps?.register('mk-bills', { minInterval: 12 * 60 * 60 * 1000 })
+    await ps?.register('mk-notes', { minInterval: 60 * 60 * 1000 })
   } catch {
     // Not supported on this browser; reminders show when the app is opened.
   }

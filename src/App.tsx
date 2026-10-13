@@ -15,6 +15,8 @@ import { SettingsSheet } from './components/SettingsSheet'
 import { mergeDoc } from './hooks/useData'
 import { billsDue, checkBills, dueText } from './lib/bills'
 import { useOnline } from './hooks/useOnline'
+import { useNoteAlarms } from './hooks/useNoteAlarms'
+import { NotesPage, whenText } from './components/NotesPage'
 
 function App() {
   const auth = useAuth()
@@ -23,7 +25,7 @@ function App() {
   return <Main user={auth.user} onSignOut={auth.signOut} />
 }
 
-type Section = 'home' | 'biz' | 'mentor'
+type Section = 'home' | 'biz' | 'mentor' | 'notes'
 
 type User = { id: string; email: string | null; name: string | null; photo: string | null }
 
@@ -104,6 +106,7 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     return () => clearInterval(t)
   }, [billsKey])
   const due = billsDue(bills)
+  const alarms = useNoteAlarms(uid)
 
   const bizName = settings.businessName?.trim()
   const initials = (bizName || 'Mera Khata')
@@ -129,6 +132,10 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           <button className={`navItem mentorNav ${section === 'mentor' ? 'active' : ''}`} onClick={() => setSection('mentor')}>
             <span className="navIc">🤖</span>
             Mentor
+          </button>
+          <button className={`navItem ${section === 'notes' ? 'active' : ''}`} onClick={() => setSection('notes')}>
+            <span className="navIc">📝</span>
+            Notes & alarms
           </button>
           <div className="navGroup">🏪 Shop / Business</div>
           {bizTabs(settings).map((t) => (
@@ -226,6 +233,9 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           <button className={section === 'mentor' ? 'active' : ''} onClick={() => setSection('mentor')}>
             🤖 Mentor
           </button>
+          <button className={section === 'notes' ? 'active' : ''} onClick={() => setSection('notes')}>
+            📝 Notes
+          </button>
         </div>
 
         {!online && <div className="offlineBanner">📴 Offline — you can keep working. Changes are saved on this phone and sync when you are back online.</div>}
@@ -250,6 +260,8 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             </span>
           </div>
         )}
+
+        {section === 'notes' && <NotesPage uid={uid} notes={alarms.notes} />}
 
         {section === 'mentor' && (
           <MentorPage
@@ -290,6 +302,33 @@ function Main({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             setBizTab(`c:${b.name}`)
           }}
         />
+      )}
+
+      {alarms.ringing.length > 0 && (
+        <div className="overlay centered">
+          <div className="alarmModal">
+            <div className="alarmBell">⏰</div>
+            {alarms.ringing.slice(0, 3).map((n) => (
+              <div key={n.id} className="alarmItem">
+                <div className="alarmTitle">{n.title || 'Reminder'}</div>
+                {n.text && <div className="alarmText">{n.text}</div>}
+                {n.remindAt && <div className="statHint">{whenText(n.remindAt)}</div>}
+              </div>
+            ))}
+            <button className="btnPrimary full" onClick={() => alarms.ringing.forEach((n) => alarms.dismiss(n.id))}>
+              OK
+            </button>
+            <button
+              className="btnGhost full"
+              onClick={() => {
+                alarms.ringing.forEach((n) => alarms.dismiss(n.id))
+                setSection('notes')
+              }}
+            >
+              Open notes
+            </button>
+          </div>
+        </div>
       )}
 
       {askPin && (

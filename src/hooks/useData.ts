@@ -17,6 +17,8 @@ import {
 type WithId = { id: string }
 
 /** Live list of documents for a query; re-subscribes when `key` changes. */
+export type LiveQuery<T> = { items: T[]; loading: boolean; error: string | null }
+
 export function useLiveQuery<T extends WithId>(q: Query | null, key: string) {
   const [items, setItems] = useState<T[]>([])
   const [loading, setLoading] = useState(true)

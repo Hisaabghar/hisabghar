@@ -438,7 +438,7 @@ button {
 /* ---------- Section switch & tabs ---------- */
 .sectionSwitch {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   padding: 6px;
   background: var(--surface);
@@ -2191,7 +2191,7 @@ button {
 }
 .threeFields {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 0 8px;
 }
 .discRow {
@@ -2661,4 +2661,140 @@ button {
 .colorDot.active {
   border-color: var(--surface);
   box-shadow: 0 0 0 2.5px var(--text);
+}
+
+/* Notes */
+.noteSearch {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-family: var(--font);
+  margin-bottom: 14px;
+}
+.noteHead {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 6px 2px 8px;
+}
+.noteGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.noteCard {
+  position: relative;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 12px 13px;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 84px;
+}
+.notePin {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  font-size: 12px;
+}
+.noteTitle {
+  font-weight: 700;
+  font-size: 13px;
+  padding-right: 16px;
+}
+.noteText {
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 0.85;
+}
+.noteWhen {
+  margin-top: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--brand);
+  background: rgba(20, 184, 166, 0.12);
+  border-radius: 999px;
+  padding: 3px 8px;
+  align-self: flex-start;
+}
+.noteWhen.late {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+.noteWhen.done {
+  color: var(--muted);
+  background: rgba(100, 116, 139, 0.12);
+}
+.alarmBox {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.alarmBox .chips {
+  margin-bottom: 10px;
+}
+.alarmModal {
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 22px 20px;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  box-shadow: var(--shadow-lg, 0 20px 50px rgba(0, 0, 0, 0.25));
+}
+.alarmBell {
+  font-size: 42px;
+  animation: ring 0.5s ease-in-out infinite alternate;
+}
+@keyframes ring {
+  from {
+    transform: rotate(-14deg);
+  }
+  to {
+    transform: rotate(14deg);
+  }
+}
+.alarmTitle {
+  font-weight: 800;
+  font-size: 16px;
+}
+.alarmText {
+  font-size: 13px;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+a.btnGhost {
+  text-align: center;
+  text-decoration: none;
+  display: block;
+}
+.notesPage .pageHead .btnPrimary {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 10px 18px;
+}
+.colorPick {
+  margin-bottom: 6px;
 }

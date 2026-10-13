@@ -33,8 +33,8 @@ function tone(freq: number, start: number, dur: number, vol: number, type: Oscil
   o.stop(t + dur + 0.02)
 }
 
-export function play(kind: 'click' | 'success' | 'delete') {
-  if (!soundOn()) return
+export function play(kind: 'click' | 'success' | 'delete' | 'alarm') {
+  if (kind !== 'alarm' && !soundOn()) return
   try {
     ctx ??= new AudioContext()
     if (ctx.state === 'suspended') void ctx.resume()
@@ -42,6 +42,11 @@ export function play(kind: 'click' | 'success' | 'delete') {
     else if (kind === 'success') {
       tone(880, 0, 0.12, 0.09)
       tone(1320, 0.08, 0.16, 0.09)
+    } else if (kind === 'alarm') {
+      for (let i = 0; i < 4; i++) {
+        tone(988, i * 0.5, 0.18, 0.2, 'square')
+        tone(1319, i * 0.5 + 0.2, 0.18, 0.2, 'square')
+      }
     } else tone(320, 0, 0.14, 0.1, 'triangle')
   } catch {
     // audio not available
